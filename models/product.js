@@ -4,32 +4,55 @@ const productSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: true,
+      required: [true, "Product name is required"],
+      trim: true,
     },
     description: {
       type: String,
-      required: true,
+      required: [true, "Product description is required"],
     },
     price: {
       type: Number,
-      required: true,
+      required: [true, "Product price is required"],
+      min: [0, "Price cannot be negative"],
     },
     inStock: {
       type: Number,
       required: true,
       default: 0,
+      min: [0, "Stock cannot be negative"],
     },
     category: {
       type: String,
-      required: true,
+      required: [true, "Product category is required"],
+      trim: true,
     },
     image: {
       type: String,
-      required: true,
+      required: [true, "Product image is required"],
+    },
+    cloudinaryPublicId: {
+      type: String,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
     },
   },
   { timestamps: true }
 );
+
+// Index for faster queries
+productSchema.index({ category: 1, isActive: 1 });
+productSchema.index({ name: "text", description: "text" });
 
 const Product = mongoose.model("Product", productSchema);
 

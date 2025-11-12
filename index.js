@@ -4,6 +4,7 @@ const cookieParser = require("cookie-parser");
 const connectDB = require("./utils/db");
 
 const userRoutes = require("./routes/user");
+const productRoutes = require("./routes/product");
 
 dotenv.config();
 
@@ -13,7 +14,7 @@ const app = express();
 
 // Middleware
 app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
 
 // Trust proxy for getting real IP addresses
@@ -30,7 +31,9 @@ app.get("/", (req, res) => {
   });
 });
 
+// API routes
 app.use("/api/users", userRoutes);
+app.use("/api/products", productRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

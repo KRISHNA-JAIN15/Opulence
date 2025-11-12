@@ -21,7 +21,6 @@ const userSchema = new Schema(
     type: {
       enum: ["buyer", "admin"],
       type: String,
-      required: true,
       default: "buyer",
     },
     isVerified: {

@@ -1,4 +1,4 @@
-const { createTransporter } = require("./config");
+const transporter = require("./config");
 const {
   Verification_Email_Template,
   Welcome_Email_Template,
@@ -7,8 +7,6 @@ const {
 
 const sendVerificationEmail = async (email, name, verificationCode) => {
   try {
-    const transporter = createTransporter();
-
     const mailOptions = {
       from: `"Opulence" <${process.env.EMAIL_USER}>`,
       to: email,
@@ -30,8 +28,6 @@ const sendVerificationEmail = async (email, name, verificationCode) => {
 
 const sendWelcomeEmail = async (email, name) => {
   try {
-    const transporter = createTransporter();
-
     const mailOptions = {
       from: `"Opulence" <${process.env.EMAIL_USER}>`,
       to: email,
@@ -50,8 +46,6 @@ const sendWelcomeEmail = async (email, name) => {
 
 const sendPasswordResetEmail = async (email, name, resetUrl, ipAddress) => {
   try {
-    const transporter = createTransporter();
-
     const mailOptions = {
       from: `"Opulence" <${process.env.EMAIL_USER}>`,
       to: email,

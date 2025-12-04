@@ -1,4 +1,9 @@
-import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useLocation,
+} from "react-router-dom";
 import { Provider } from "react-redux";
 import { store } from "./store/store";
 import Header from "./components/Header";
@@ -15,7 +20,7 @@ import EditProduct from "./pages/admin/EditProduct";
 
 function AppContent() {
   const location = useLocation();
-  const isAdminRoute = location.pathname.startsWith('/admin');
+  const isAdminRoute = location.pathname.startsWith("/admin");
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -29,11 +34,29 @@ function AppContent() {
           <Route path="/verify-email" element={<VerifyEmail />} />
 
           {/* Admin Routes */}
-          <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
-          <Route path="/admin/products/add" element={<AdminLayout><AddProduct /></AdminLayout>} />
+          <Route
+            path="/admin"
+            element={
+              <AdminLayout>
+                <AdminDashboard />
+              </AdminLayout>
+            }
+          />
+          <Route
+            path="/admin/products/add"
+            element={
+              <AdminLayout>
+                <AddProduct />
+              </AdminLayout>
+            }
+          />
           <Route
             path="/admin/products/edit/:id"
-            element={<AdminLayout><EditProduct /></AdminLayout>}
+            element={
+              <AdminLayout>
+                <EditProduct />
+              </AdminLayout>
+            }
           />
 
           {/* Add more routes as needed */}

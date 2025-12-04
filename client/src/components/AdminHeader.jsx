@@ -1,7 +1,15 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../store/authSlice";
-import { Package, Plus, BarChart3, Users, Settings, LogOut, Home } from "lucide-react";
+import {
+  Package,
+  Plus,
+  BarChart3,
+  Users,
+  Settings,
+  LogOut,
+  Home,
+} from "lucide-react";
 
 const AdminHeader = () => {
   const navigate = useNavigate();

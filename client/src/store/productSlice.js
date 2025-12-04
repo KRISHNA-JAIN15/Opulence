@@ -8,6 +8,7 @@ const initialState = {
   categories: [],
   featuredProducts: [],
   discountedProducts: [],
+  relatedProducts: [],
   currentProduct: null,
   isLoading: false,
   isSuccess: false,
@@ -88,6 +89,21 @@ export const getDiscountedProducts = createAsyncThunk(
   async (limit = 8, thunkAPI) => {
     try {
       const response = await axios.get(`${API_URL}/discounted?limit=${limit}`);
+      return response.data;
+    } catch (error) {
+      const message =
+        error.response?.data?.message || error.message || error.toString();
+      return thunkAPI.rejectWithValue(message);
+    }
+  }
+);
+
+// Get related products
+export const getRelatedProducts = createAsyncThunk(
+  "products/getRelated",
+  async (id, thunkAPI) => {
+    try {
+      const response = await axios.get(`${API_URL}/${id}/related`);
       return response.data;
     } catch (error) {
       const message =
@@ -288,6 +304,20 @@ export const productSlice = createSlice({
         state.discountedProducts = action.payload.data;
       })
       .addCase(getDiscountedProducts.rejected, (state, action) => {
+        state.isLoading = false;
+        state.isError = true;
+        state.message = action.payload;
+      })
+      // Get related products
+      .addCase(getRelatedProducts.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(getRelatedProducts.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isSuccess = true;
+        state.relatedProducts = action.payload.data;
+      })
+      .addCase(getRelatedProducts.rejected, (state, action) => {
         state.isLoading = false;
         state.isError = true;
         state.message = action.payload;

@@ -398,6 +398,43 @@ const getDiscountedProducts = async (req, res) => {
   }
 };
 
+const getRelatedProducts = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { limit = 4 } = req.query;
+
+    // First get the current product to find its category
+    const currentProduct = await Product.findById(id);
+
+    if (!currentProduct) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    // Find related products in the same category, excluding the current product
+    const relatedProducts = await Product.find({
+      _id: { $ne: id },
+      category: currentProduct.category,
+      isActive: true,
+    })
+      .limit(Number(limit))
+      .select("-__v");
+
+    res.status(200).json({
+      success: true,
+      data: relatedProducts,
+    });
+  } catch (error) {
+    console.error("Get related products error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch related products",
+    });
+  }
+};
+
 module.exports = {
   getAllProducts,
   getProductById,
@@ -408,4 +445,5 @@ module.exports = {
   getCategories,
   getFeaturedProducts,
   getDiscountedProducts,
+  getRelatedProducts,
 };

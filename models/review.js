@@ -15,10 +15,30 @@ const reviewSchema = new mongoose.Schema(
     rating: {
       type: Number,
       required: true,
+      min: 1,
+      max: 5,
+    },
+    title: {
+      type: String,
+      required: true,
+      trim: true,
     },
     comment: {
       type: String,
       required: true,
+      trim: true,
+    },
+    helpful: {
+      type: Number,
+      default: 0,
+    },
+    verified: {
+      type: Boolean,
+      default: false,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
     },
   },
   { timestamps: true }

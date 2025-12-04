@@ -1,109 +1,22 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Truck, Shield, Award, Headphones } from "lucide-react";
+import { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  getFeaturedProducts,
+  getDiscountedProducts,
+} from "../store/productSlice";
 
 const Home = () => {
-  // Hardcoded products
-  const latestProducts = [
-    {
-      id: 1,
-      name: "CORE ACTION SPORTS BRIGHT PINK SKATE HELMET",
-      price: "37.90",
-      image:
-        "https://images.unsplash.com/photo-1562620669-b8b78c09e93e?w=500&h=500&fit=crop",
-    },
-    {
-      id: 2,
-      name: "NITRO T1 - MEN'S SNOWBOARD 2025/26",
-      price: "579.90",
-      image:
-        "https://images.unsplash.com/photo-1519864550538-43d52a24f94c?w=500&h=500&fit=crop",
-    },
-    {
-      id: 3,
-      name: "NITRO TEAM - MEN'S SNOWBOARD 2025/26",
-      price: "579.90",
-      image:
-        "https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=500&h=500&fit=crop",
-    },
-    {
-      id: 4,
-      name: "NITRO OPTISYM - MEN'S SNOWBOARD 2025/26",
-      price: "559.90",
-      image:
-        "https://images.unsplash.com/photo-1486401899868-0e435ed85128?w=500&h=500&fit=crop",
-    },
-    {
-      id: 5,
-      name: "SANTA CRUZ - PRO MEEK SCRATCHED SLASHER FEELBASE PRODECK SKATE",
-      price: "82.50",
-      originalPrice: "86.90",
-      discount: "-10%",
-      image:
-        "https://images.unsplash.com/photo-1547447134-cd3f5c716030?w=500&h=500&fit=crop",
-    },
-    {
-      id: 6,
-      name: "SANTA CRUZ - PRO ASTA COSMIC EYES TWIN PRO DECK SKATE",
-      price: "82.50",
-      originalPrice: "86.90",
-      discount: "-10%",
-      image:
-        "https://images.unsplash.com/photo-1564982752979-3f7bc974d29a?w=500&h=500&fit=crop",
-    },
-    {
-      id: 7,
-      name: "SANTA CRUZ - VX WOOTEN PART ONE VX DECK SKATE",
-      price: "118.90",
-      image:
-        "https://images.unsplash.com/photo-1603821871019-68c0dec44a5f?w=500&h=500&fit=crop",
-    },
-    {
-      id: 8,
-      name: "SANTA CRUZ - PRO ROSKOPP DISSECT DECK SKATE",
-      price: "73.90",
-      image:
-        "https://images.unsplash.com/photo-1621544402532-8fc5c51e0623?w=500&h=500&fit=crop",
-    },
-  ];
+  const dispatch = useDispatch();
+  const { featuredProducts, discountedProducts, isLoading } = useSelector(
+    (state) => state.products
+  );
 
-  const offerProducts = [
-    {
-      id: 1,
-      name: "SANTA CRUZ - PRO MEEK SCRATCHED SLASHER FEELBASE PRODECK SKATE",
-      price: "82.50",
-      originalPrice: "86.90",
-      discount: "-10%",
-      image:
-        "https://images.unsplash.com/photo-1547447134-cd3f5c716030?w=500&h=500&fit=crop",
-    },
-    {
-      id: 2,
-      name: "SANTA CRUZ - PRO ASTA COSMIC EYES TWIN PRO DECK SKATE",
-      price: "82.50",
-      originalPrice: "86.90",
-      discount: "-10%",
-      image:
-        "https://images.unsplash.com/photo-1564982752979-3f7bc974d29a?w=500&h=500&fit=crop",
-    },
-    {
-      id: 3,
-      name: "MONS ROYALE MCCLOUD BEANIE - UNISEX BLACK HAT",
-      price: "24.90",
-      originalPrice: "35.90",
-      discount: "-30%",
-      image:
-        "https://images.unsplash.com/photo-1576871337632-b9aef4c17ab9?w=500&h=500&fit=crop",
-    },
-    {
-      id: 4,
-      name: 'RADIO LEGION 29" WHEELIE BIKE',
-      price: "989.00",
-      originalPrice: "999.00",
-      discount: "-0%",
-      image:
-        "https://images.unsplash.com/photo-1576435728678-68d0fbf94e91?w=500&h=500&fit=crop",
-    },
-  ];
+  useEffect(() => {
+    dispatch(getFeaturedProducts(8));
+    dispatch(getDiscountedProducts(8));
+  }, [dispatch]);
 
   return (
     <div className="min-h-screen">
@@ -125,9 +38,9 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Latest Arrivals */}
+      {/* Featured Products */}
       <section className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <h2 className="section-heading">LATEST ARRIVALS</h2>
+        <h2 className="section-heading">FEATURED PRODUCTS</h2>
         <div className="text-center mb-12">
           <Link
             to="/products"
@@ -137,11 +50,23 @@ const Home = () => {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          {latestProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
+        {isLoading ? (
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+          </div>
+        ) : featuredProducts.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="text-gray-500 text-lg">
+              No featured products available at the moment.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {featuredProducts.map((product) => (
+              <ProductCard key={product._id} product={product} />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Features Section */}
@@ -174,22 +99,36 @@ const Home = () => {
 
       {/* Offers Section */}
       <section className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <h2 className="section-heading">OFFERS</h2>
+        <h2 className="section-heading">BEST DISCOUNTS</h2>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
-          {offerProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
+        {isLoading ? (
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+          </div>
+        ) : discountedProducts.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="text-gray-500 text-lg">
+              No discounted products available at the moment.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+              {discountedProducts.map((product) => (
+                <ProductCard key={product._id} product={product} />
+              ))}
+            </div>
 
-        <div className="text-center">
-          <Link
-            to="/products"
-            className="inline-block bg-black text-white px-8 py-3 font-bold uppercase hover:bg-gray-800 transition"
-          >
-            View all
-          </Link>
-        </div>
+            <div className="text-center">
+              <Link
+                to="/products"
+                className="inline-block bg-black text-white px-8 py-3 font-bold uppercase hover:bg-gray-800 transition"
+              >
+                View all
+              </Link>
+            </div>
+          </>
+        )}
       </section>
 
       {/* Collections Section */}
@@ -244,11 +183,18 @@ const Home = () => {
 
 // Product Card Component
 const ProductCard = ({ product }) => {
+  // Calculate discounted price and original price
+  const hasDiscount = product.discount > 0;
+  const originalPrice = hasDiscount ? product.price : null;
+  const discountedPrice = hasDiscount
+    ? (product.price * (1 - product.discount / 100)).toFixed(2)
+    : product.price;
+
   return (
-    <Link to={`/products/${product.id}`} className="product-card group">
+    <Link to={`/products/${product._id}`} className="product-card group">
       <div className="relative aspect-square overflow-hidden bg-gray-100">
-        {product.discount && (
-          <span className="discount-badge">{product.discount}</span>
+        {hasDiscount && (
+          <span className="discount-badge">-{product.discount}%</span>
         )}
         <img
           src={product.image}
@@ -257,14 +203,14 @@ const ProductCard = ({ product }) => {
         />
       </div>
       <div className="p-5">
-        <h3 className="font-bold text-sm mb-3 line-clamp-2 uppercase tracking-wide leading-snug min-h-[2.5rem]">
+        <h3 className="font-bold text-sm mb-3 line-clamp-2 uppercase tracking-wide leading-snug min-h-10">
           {product.name}
         </h3>
         <div className="flex items-center gap-2">
-          {product.originalPrice && (
-            <span className="price-original">€{product.originalPrice}</span>
+          {hasDiscount && originalPrice && (
+            <span className="price-original">€{originalPrice}</span>
           )}
-          <span className="price-current">€{product.price}</span>
+          <span className="price-current">€{discountedPrice}</span>
         </div>
       </div>
     </Link>

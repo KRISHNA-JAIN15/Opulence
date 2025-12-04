@@ -6,6 +6,8 @@ const API_URL = "http://localhost:3000/api/products";
 const initialState = {
   products: [],
   categories: [],
+  featuredProducts: [],
+  discountedProducts: [],
   currentProduct: null,
   isLoading: false,
   isSuccess: false,
@@ -56,6 +58,36 @@ export const getCategories = createAsyncThunk(
   async (_, thunkAPI) => {
     try {
       const response = await axios.get(`${API_URL}/categories/all`);
+      return response.data;
+    } catch (error) {
+      const message =
+        error.response?.data?.message || error.message || error.toString();
+      return thunkAPI.rejectWithValue(message);
+    }
+  }
+);
+
+// Get featured products
+export const getFeaturedProducts = createAsyncThunk(
+  "products/getFeatured",
+  async (limit = 8, thunkAPI) => {
+    try {
+      const response = await axios.get(`${API_URL}/featured?limit=${limit}`);
+      return response.data;
+    } catch (error) {
+      const message =
+        error.response?.data?.message || error.message || error.toString();
+      return thunkAPI.rejectWithValue(message);
+    }
+  }
+);
+
+// Get discounted products
+export const getDiscountedProducts = createAsyncThunk(
+  "products/getDiscounted",
+  async (limit = 8, thunkAPI) => {
+    try {
+      const response = await axios.get(`${API_URL}/discounted?limit=${limit}`);
       return response.data;
     } catch (error) {
       const message =
@@ -228,6 +260,34 @@ export const productSlice = createSlice({
         state.message = action.payload.message;
       })
       .addCase(updateProduct.rejected, (state, action) => {
+        state.isLoading = false;
+        state.isError = true;
+        state.message = action.payload;
+      })
+      // Get featured products
+      .addCase(getFeaturedProducts.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(getFeaturedProducts.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isSuccess = true;
+        state.featuredProducts = action.payload.data;
+      })
+      .addCase(getFeaturedProducts.rejected, (state, action) => {
+        state.isLoading = false;
+        state.isError = true;
+        state.message = action.payload;
+      })
+      // Get discounted products
+      .addCase(getDiscountedProducts.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(getDiscountedProducts.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isSuccess = true;
+        state.discountedProducts = action.payload.data;
+      })
+      .addCase(getDiscountedProducts.rejected, (state, action) => {
         state.isLoading = false;
         state.isError = true;
         state.message = action.payload;

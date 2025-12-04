@@ -7,6 +7,8 @@ const {
   deleteProduct,
   updateProductQuantity,
   getCategories,
+  getFeaturedProducts,
+  getDiscountedProducts,
 } = require("../controllers/product");
 const { authenticateToken, adminOnly } = require("../middlewares/auth/auth");
 const { upload } = require("../utils/cloudinary");
@@ -16,6 +18,8 @@ const router = express.Router();
 // Public routes
 router.get("/", getAllProducts);
 router.get("/categories/all", getCategories);
+router.get("/featured", getFeaturedProducts);
+router.get("/discounted", getDiscountedProducts);
 router.get("/:id", getProductById);
 
 // Admin only routes - Create, Update, Delete

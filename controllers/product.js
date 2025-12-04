@@ -342,6 +342,62 @@ const getCategories = async (req, res) => {
   }
 };
 
+// @desc    Get featured products
+// @route   GET /api/products/featured
+// @access  Public
+const getFeaturedProducts = async (req, res) => {
+  try {
+    const { limit = 8 } = req.query;
+
+    const products = await Product.find({
+      isActive: true,
+      featured: true,
+    })
+      .sort({ createdAt: -1 })
+      .limit(Number(limit))
+      .select("-__v");
+
+    res.status(200).json({
+      success: true,
+      data: products,
+    });
+  } catch (error) {
+    console.error("Get featured products error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch featured products",
+    });
+  }
+};
+
+// @desc    Get products with highest discounts
+// @route   GET /api/products/discounted
+// @access  Public
+const getDiscountedProducts = async (req, res) => {
+  try {
+    const { limit = 8 } = req.query;
+
+    const products = await Product.find({
+      isActive: true,
+      discount: { $gt: 0 },
+    })
+      .sort({ discount: -1, createdAt: -1 })
+      .limit(Number(limit))
+      .select("-__v");
+
+    res.status(200).json({
+      success: true,
+      data: products,
+    });
+  } catch (error) {
+    console.error("Get discounted products error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch discounted products",
+    });
+  }
+};
+
 module.exports = {
   getAllProducts,
   getProductById,
@@ -350,4 +406,6 @@ module.exports = {
   deleteProduct,
   updateProductQuantity,
   getCategories,
+  getFeaturedProducts,
+  getDiscountedProducts,
 };

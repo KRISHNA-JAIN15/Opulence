@@ -10,6 +10,8 @@ import Header from "./components/Header";
 import Footer from "./components/Footer";
 import AdminLayout from "./components/AdminLayout";
 import Home from "./pages/Home";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import VerifyEmail from "./pages/VerifyEmail";
@@ -29,6 +31,8 @@ function AppContent() {
       <main className="grow">
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
           <Route path="/products" element={<Products />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />

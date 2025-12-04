@@ -8,20 +8,31 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
           {/* Account */}
           <div>
-            <h3 className="text-base font-black mb-6 uppercase tracking-wider">Account</h3>
+            <h3 className="text-base font-black mb-6 uppercase tracking-wider">
+              Account
+            </h3>
             <ul className="space-y-3">
               <li>
-                <Link to="/login" className="text-gray-300 hover:text-white transition text-sm">
+                <Link
+                  to="/login"
+                  className="text-gray-300 hover:text-white transition text-sm"
+                >
                   Sign in
                 </Link>
               </li>
               <li>
-                <Link to="/orders" className="text-gray-300 hover:text-white transition text-sm">
+                <Link
+                  to="/orders"
+                  className="text-gray-300 hover:text-white transition text-sm"
+                >
                   My orders
                 </Link>
               </li>
               <li>
-                <Link to="/cart" className="text-gray-300 hover:text-white transition text-sm">
+                <Link
+                  to="/cart"
+                  className="text-gray-300 hover:text-white transition text-sm"
+                >
                   Cart
                 </Link>
               </li>
@@ -30,20 +41,31 @@ const Footer = () => {
 
           {/* Company */}
           <div>
-            <h3 className="text-base font-black mb-6 uppercase tracking-wider">Company</h3>
+            <h3 className="text-base font-black mb-6 uppercase tracking-wider">
+              Company
+            </h3>
             <ul className="space-y-3">
               <li>
-                <Link to="/about" className="text-gray-300 hover:text-white transition text-sm">
+                <Link
+                  to="/about"
+                  className="text-gray-300 hover:text-white transition text-sm"
+                >
                   Who we are
                 </Link>
               </li>
               <li>
-                <Link to="/brands" className="text-gray-300 hover:text-white transition text-sm">
+                <Link
+                  to="/brands"
+                  className="text-gray-300 hover:text-white transition text-sm"
+                >
                   Our brands
                 </Link>
               </li>
               <li>
-                <Link to="/terms" className="text-gray-300 hover:text-white transition text-sm">
+                <Link
+                  to="/terms"
+                  className="text-gray-300 hover:text-white transition text-sm"
+                >
                   Terms and conditions
                 </Link>
               </li>
@@ -52,20 +74,31 @@ const Footer = () => {
 
           {/* Help */}
           <div>
-            <h3 className="text-base font-black mb-6 uppercase tracking-wider">Help</h3>
+            <h3 className="text-base font-black mb-6 uppercase tracking-wider">
+              Help
+            </h3>
             <ul className="space-y-3">
               <li>
-                <Link to="/shipping" className="text-gray-300 hover:text-white transition text-sm">
+                <Link
+                  to="/shipping"
+                  className="text-gray-300 hover:text-white transition text-sm"
+                >
                   How to place an order
                 </Link>
               </li>
               <li>
-                <Link to="/returns" className="text-gray-300 hover:text-white transition text-sm">
+                <Link
+                  to="/returns"
+                  className="text-gray-300 hover:text-white transition text-sm"
+                >
                   Delivery and return times
                 </Link>
               </li>
               <li>
-                <Link to="/payments" className="text-gray-300 hover:text-white transition text-sm">
+                <Link
+                  to="/payments"
+                  className="text-gray-300 hover:text-white transition text-sm"
+                >
                   Payments
                 </Link>
               </li>
@@ -74,7 +107,9 @@ const Footer = () => {
 
           {/* Contacts */}
           <div>
-            <h3 className="text-base font-black mb-6 uppercase tracking-wider">Contacts</h3>
+            <h3 className="text-base font-black mb-6 uppercase tracking-wider">
+              Contacts
+            </h3>
             <ul className="space-y-3 mb-8">
               <li className="flex items-center space-x-3 text-sm">
                 <Phone size={18} />
@@ -86,7 +121,9 @@ const Footer = () => {
               </li>
             </ul>
             <div>
-              <h4 className="font-bold mb-4 text-sm uppercase tracking-wider">Follow Us</h4>
+              <h4 className="font-bold mb-4 text-sm uppercase tracking-wider">
+                Follow Us
+              </h4>
               <div className="flex space-x-4">
                 <a
                   href="https://instagram.com"

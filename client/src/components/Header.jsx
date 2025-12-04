@@ -212,7 +212,10 @@ const Header = () => {
               >
                 Close
               </button>
-              <button type="submit" className="px-6 py-3 bg-black text-white font-bold rounded hover:bg-gray-800 transition uppercase text-sm">
+              <button
+                type="submit"
+                className="px-6 py-3 bg-black text-white font-bold rounded hover:bg-gray-800 transition uppercase text-sm"
+              >
                 Search
               </button>
             </div>

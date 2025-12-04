@@ -8,25 +8,29 @@ const Home = () => {
       id: 1,
       name: "CORE ACTION SPORTS BRIGHT PINK SKATE HELMET",
       price: "37.90",
-      image: "https://images.unsplash.com/photo-1562620669-b8b78c09e93e?w=500&h=500&fit=crop"
+      image:
+        "https://images.unsplash.com/photo-1562620669-b8b78c09e93e?w=500&h=500&fit=crop",
     },
     {
       id: 2,
       name: "NITRO T1 - MEN'S SNOWBOARD 2025/26",
       price: "579.90",
-      image: "https://images.unsplash.com/photo-1519864550538-43d52a24f94c?w=500&h=500&fit=crop"
+      image:
+        "https://images.unsplash.com/photo-1519864550538-43d52a24f94c?w=500&h=500&fit=crop",
     },
     {
       id: 3,
       name: "NITRO TEAM - MEN'S SNOWBOARD 2025/26",
       price: "579.90",
-      image: "https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=500&h=500&fit=crop"
+      image:
+        "https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=500&h=500&fit=crop",
     },
     {
       id: 4,
       name: "NITRO OPTISYM - MEN'S SNOWBOARD 2025/26",
       price: "559.90",
-      image: "https://images.unsplash.com/photo-1486401899868-0e435ed85128?w=500&h=500&fit=crop"
+      image:
+        "https://images.unsplash.com/photo-1486401899868-0e435ed85128?w=500&h=500&fit=crop",
     },
     {
       id: 5,
@@ -34,7 +38,8 @@ const Home = () => {
       price: "82.50",
       originalPrice: "86.90",
       discount: "-10%",
-      image: "https://images.unsplash.com/photo-1547447134-cd3f5c716030?w=500&h=500&fit=crop"
+      image:
+        "https://images.unsplash.com/photo-1547447134-cd3f5c716030?w=500&h=500&fit=crop",
     },
     {
       id: 6,
@@ -42,20 +47,23 @@ const Home = () => {
       price: "82.50",
       originalPrice: "86.90",
       discount: "-10%",
-      image: "https://images.unsplash.com/photo-1564982752979-3f7bc974d29a?w=500&h=500&fit=crop"
+      image:
+        "https://images.unsplash.com/photo-1564982752979-3f7bc974d29a?w=500&h=500&fit=crop",
     },
     {
       id: 7,
       name: "SANTA CRUZ - VX WOOTEN PART ONE VX DECK SKATE",
       price: "118.90",
-      image: "https://images.unsplash.com/photo-1603821871019-68c0dec44a5f?w=500&h=500&fit=crop"
+      image:
+        "https://images.unsplash.com/photo-1603821871019-68c0dec44a5f?w=500&h=500&fit=crop",
     },
     {
       id: 8,
       name: "SANTA CRUZ - PRO ROSKOPP DISSECT DECK SKATE",
       price: "73.90",
-      image: "https://images.unsplash.com/photo-1621544402532-8fc5c51e0623?w=500&h=500&fit=crop"
-    }
+      image:
+        "https://images.unsplash.com/photo-1621544402532-8fc5c51e0623?w=500&h=500&fit=crop",
+    },
   ];
 
   const offerProducts = [
@@ -65,7 +73,8 @@ const Home = () => {
       price: "82.50",
       originalPrice: "86.90",
       discount: "-10%",
-      image: "https://images.unsplash.com/photo-1547447134-cd3f5c716030?w=500&h=500&fit=crop"
+      image:
+        "https://images.unsplash.com/photo-1547447134-cd3f5c716030?w=500&h=500&fit=crop",
     },
     {
       id: 2,
@@ -73,7 +82,8 @@ const Home = () => {
       price: "82.50",
       originalPrice: "86.90",
       discount: "-10%",
-      image: "https://images.unsplash.com/photo-1564982752979-3f7bc974d29a?w=500&h=500&fit=crop"
+      image:
+        "https://images.unsplash.com/photo-1564982752979-3f7bc974d29a?w=500&h=500&fit=crop",
     },
     {
       id: 3,
@@ -81,25 +91,28 @@ const Home = () => {
       price: "24.90",
       originalPrice: "35.90",
       discount: "-30%",
-      image: "https://images.unsplash.com/photo-1576871337632-b9aef4c17ab9?w=500&h=500&fit=crop"
+      image:
+        "https://images.unsplash.com/photo-1576871337632-b9aef4c17ab9?w=500&h=500&fit=crop",
     },
     {
       id: 4,
-      name: "RADIO LEGION 29\" WHEELIE BIKE",
+      name: 'RADIO LEGION 29" WHEELIE BIKE',
       price: "989.00",
       originalPrice: "999.00",
       discount: "-0%",
-      image: "https://images.unsplash.com/photo-1576435728678-68d0fbf94e91?w=500&h=500&fit=crop"
-    }
+      image:
+        "https://images.unsplash.com/photo-1576435728678-68d0fbf94e91?w=500&h=500&fit=crop",
+    },
   ];
 
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section 
-        className="hero-section" 
+      <section
+        className="hero-section"
         style={{
-          backgroundImage: "url('https://images.unsplash.com/photo-1519915212116-7cfef71f1d3e?w=1920&h=600&fit=crop')"
+          backgroundImage:
+            "url('https://images.unsplash.com/photo-1519915212116-7cfef71f1d3e?w=1920&h=600&fit=crop')",
         }}
       >
         <div className="hero-overlay"></div>
@@ -116,7 +129,10 @@ const Home = () => {
       <section className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <h2 className="section-heading">LATEST ARRIVALS</h2>
         <div className="text-center mb-12">
-          <Link to="/products" className="inline-block bg-black text-white px-8 py-3 font-bold uppercase hover:bg-gray-800 transition">
+          <Link
+            to="/products"
+            className="inline-block bg-black text-white px-8 py-3 font-bold uppercase hover:bg-gray-800 transition"
+          >
             VIEW ALL
           </Link>
         </div>
@@ -159,7 +175,7 @@ const Home = () => {
       {/* Offers Section */}
       <section className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <h2 className="section-heading">OFFERS</h2>
-        
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
           {offerProducts.map((product) => (
             <ProductCard key={product.id} product={product} />
@@ -167,7 +183,10 @@ const Home = () => {
         </div>
 
         <div className="text-center">
-          <Link to="/products" className="inline-block bg-black text-white px-8 py-3 font-bold uppercase hover:bg-gray-800 transition">
+          <Link
+            to="/products"
+            className="inline-block bg-black text-white px-8 py-3 font-bold uppercase hover:bg-gray-800 transition"
+          >
             View all
           </Link>
         </div>
@@ -200,7 +219,8 @@ const Home = () => {
         <div className="max-w-4xl mx-auto">
           <h2 className="newsletter-title">JOIN OPULENCE</h2>
           <p className="text-gray-300 mb-8 text-lg">
-            Receive exclusive offers, news, and be the first to know about the latest arrivals
+            Receive exclusive offers, news, and be the first to know about the
+            latest arrivals
           </p>
           <form className="flex flex-col sm:flex-row gap-4 max-w-2xl mx-auto">
             <input
@@ -269,7 +289,11 @@ const CollectionCard = ({ title, link, image }) => {
       <img src={image} alt={title} />
       <div className="collection-overlay"></div>
       <div className="collection-title flex items-center gap-3">
-        {title} <ArrowRight className="group-hover:translate-x-2 transition-transform" size={28} />
+        {title}{" "}
+        <ArrowRight
+          className="group-hover:translate-x-2 transition-transform"
+          size={28}
+        />
       </div>
     </Link>
   );

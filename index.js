@@ -1,4 +1,5 @@
 const express = require("express");
+const cors = require("cors");
 const dotenv = require("dotenv");
 const cookieParser = require("cookie-parser");
 const connectDB = require("./utils/db");
@@ -11,6 +12,16 @@ dotenv.config();
 connectDB();
 
 const app = express();
+
+// CORS configuration
+const corsOptions = {
+  origin: ["http://localhost:5173", "http://localhost:3000"], // Allow requests from your React app and API
+  credentials: true, // Allow cookies and credentials
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "x-requested-with"],
+};
+
+app.use(cors(corsOptions));
 
 // Middleware
 app.use(express.json({ limit: "10mb" }));

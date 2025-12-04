@@ -51,6 +51,16 @@ export const login = createAsyncThunk(
     } catch (error) {
       const message =
         error.response?.data?.message || error.message || error.toString();
+
+      // If the error is about email verification, store the email for verification
+      if (message.includes("verify your email")) {
+        return thunkAPI.rejectWithValue({
+          message,
+          isEmailVerificationRequired: true,
+          email: userData.email,
+        });
+      }
+
       return thunkAPI.rejectWithValue(message);
     }
   }
@@ -142,7 +152,14 @@ export const authSlice = createSlice({
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false;
         state.isError = true;
-        state.message = action.payload;
+
+        // Handle email verification requirement
+        if (action.payload?.isEmailVerificationRequired) {
+          state.message = action.payload.message;
+          state.verificationEmail = action.payload.email;
+        } else {
+          state.message = action.payload;
+        }
       })
       // Verify Email
       .addCase(verifyEmail.pending, (state) => {

@@ -225,6 +225,73 @@ button {
   color: #000;
 }
 
+/* Search Modal Styling */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.modal[open] {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal[open] .modal-content {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.modal-backdrop {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+/* Enhanced Search Input */
+.search-input-enhanced {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.search-input-enhanced:focus {
+  box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.1), 0 8px 25px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.search-input-enhanced::placeholder {
+  transition: opacity 0.3s ease;
+}
+
+.search-input-enhanced:focus::placeholder {
+  opacity: 0.7;
+}
+
+.search-button-enhanced {
+  background: linear-gradient(135deg, #000 0%, #333 100%);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.search-button-enhanced:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), 0 3px 6px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
+}
+
+.search-button-enhanced:active {
+  transform: translateY(0px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
 /* Newsletter Section */
 .newsletter-section {
   background: #000;

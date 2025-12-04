@@ -2,11 +2,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../store/authSlice";
 import { Search, ShoppingCart, User, Menu, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchActive, setIsSearchActive] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
@@ -19,9 +20,24 @@ const Header = () => {
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/products?search=${searchQuery}`);
+      navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery("");
+      setIsSearchActive(false);
     }
   };
+
+  // Handle keyboard events
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && isSearchActive) {
+        setIsSearchActive(false);
+        setSearchQuery("");
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isSearchActive]);
 
   return (
     <>
@@ -41,45 +57,94 @@ const Header = () => {
               </div>
             </Link>
 
-            {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center space-x-8 lg:space-x-10">
-              <Link
-                to="/products"
-                className="text-black text-sm font-bold hover:text-gray-600 transition uppercase tracking-wider"
-              >
-                Products
-              </Link>
-              <Link
-                to="/categories"
-                className="text-black text-sm font-bold hover:text-gray-600 transition uppercase tracking-wider"
-              >
-                Categories
-              </Link>
-              <Link
-                to="/about"
-                className="text-black text-sm font-bold hover:text-gray-600 transition uppercase tracking-wider"
-              >
-                About
-              </Link>
-              <Link
-                to="/contact"
-                className="text-black text-sm font-bold hover:text-gray-600 transition uppercase tracking-wider"
-              >
-                Contact
-              </Link>
-            </nav>
+            {/* Desktop Navigation / Search */}
+            {isSearchActive ? (
+              <div className="hidden md:flex items-center flex-1 max-w-2xl mx-8">
+                <form
+                  onSubmit={handleSearch}
+                  className="flex items-center w-full"
+                >
+                  <div className="relative flex-1">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <Search
+                        className="h-5 w-5 text-gray-400"
+                        strokeWidth={2}
+                      />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Search for products, brands, categories..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-12 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-all duration-200 text-gray-900 placeholder-gray-500"
+                      autoFocus
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="ml-3 px-6 py-3 bg-black text-white font-bold rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-400 transition-all duration-200 uppercase text-sm tracking-wide flex items-center gap-2"
+                  >
+                    <Search size={16} strokeWidth={2} />
+                    Search
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSearchActive(false);
+                      setSearchQuery("");
+                    }}
+                    className="ml-2 px-4 py-3 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-all duration-200 uppercase text-sm tracking-wide"
+                  >
+                    <X size={16} />
+                  </button>
+                </form>
+              </div>
+            ) : (
+              <nav className="hidden md:flex items-center space-x-8 lg:space-x-10">
+                <Link
+                  to="/products"
+                  className="text-black text-sm font-bold hover:text-gray-600 transition uppercase tracking-wider"
+                >
+                  Products
+                </Link>
+                <Link
+                  to="/categories"
+                  className="text-black text-sm font-bold hover:text-gray-600 transition uppercase tracking-wider"
+                >
+                  Categories
+                </Link>
+                <Link
+                  to="/about"
+                  className="text-black text-sm font-bold hover:text-gray-600 transition uppercase tracking-wider"
+                >
+                  About
+                </Link>
+                <Link
+                  to="/contact"
+                  className="text-black text-sm font-bold hover:text-gray-600 transition uppercase tracking-wider"
+                >
+                  Contact
+                </Link>
+              </nav>
+            )}
 
             {/* Right Actions */}
             <div className="flex items-center space-x-2 md:space-x-3">
               {/* Search */}
               <button
-                onClick={() =>
-                  document.getElementById("search-modal").showModal()
-                }
-                className="p-2.5 hover:bg-gray-100 rounded-full transition"
+                onClick={() => {
+                  setIsSearchActive(true);
+                  setSearchQuery("");
+                }}
+                className="p-3 hover:bg-gray-100 rounded-xl transition-all duration-200 transform hover:scale-110 active:scale-95 border border-transparent hover:border-gray-200 hover:shadow-sm"
                 aria-label="Search"
+                title="Search products"
               >
-                <Search size={22} strokeWidth={2} />
+                <Search
+                  size={20}
+                  strokeWidth={2.5}
+                  className="text-gray-700 hover:text-black transition-colors"
+                />
               </button>
 
               {/* User/Auth */}
@@ -108,9 +173,9 @@ const Header = () => {
                     {user.type === "admin" && (
                       <Link
                         to="/admin"
-                        className="block px-5 py-3 text-sm font-medium hover:bg-gray-50 border-b border-gray-100"
+                        className="block px-5 py-3 text-sm font-medium hover:bg-blue-50 text-blue-600 border-b border-gray-100"
                       >
-                        Admin Dashboard
+                        🔧 Admin Dashboard
                       </Link>
                     )}
                     <button
@@ -156,7 +221,40 @@ const Header = () => {
 
           {/* Mobile Navigation */}
           {isMenuOpen && (
-            <nav className="md:hidden pb-4 space-y-1 border-t border-gray-200 pt-4">
+            <nav className="md:hidden pb-4 space-y-3 border-t border-gray-200 pt-4">
+              {/* Mobile Search */}
+              <div className="px-4">
+                <form
+                  onSubmit={(e) => {
+                    handleSearch(e);
+                    setIsMenuOpen(false);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <div className="relative flex-1">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Search
+                        className="h-4 w-4 text-gray-400"
+                        strokeWidth={2}
+                      />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Search products..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-all text-sm"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-black text-white font-bold rounded-lg hover:bg-gray-800 transition text-sm uppercase tracking-wide"
+                  >
+                    Search
+                  </button>
+                </form>
+              </div>
+
               <Link
                 to="/products"
                 className="block py-3 text-black font-bold hover:text-gray-600 hover:bg-gray-50 px-4 rounded transition uppercase tracking-wider text-sm"
@@ -189,42 +287,6 @@ const Header = () => {
           )}
         </div>
       </header>
-
-      {/* Search Modal */}
-      <dialog id="search-modal" className="modal backdrop-blur-sm">
-        <div className="bg-white rounded-lg shadow-2xl p-8 max-w-2xl w-full mx-4">
-          <form onSubmit={handleSearch}>
-            <div className="mb-6">
-              <input
-                type="text"
-                placeholder="Search products..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-6 py-4 text-lg border-2 border-gray-300 rounded focus:outline-none focus:border-black transition"
-                autoFocus
-              />
-            </div>
-            <div className="flex gap-3 justify-end">
-              <button
-                type="button"
-                onClick={() => document.getElementById("search-modal").close()}
-                className="px-6 py-3 bg-gray-200 text-black font-bold rounded hover:bg-gray-300 transition uppercase text-sm"
-              >
-                Close
-              </button>
-              <button
-                type="submit"
-                className="px-6 py-3 bg-black text-white font-bold rounded hover:bg-gray-800 transition uppercase text-sm"
-              >
-                Search
-              </button>
-            </div>
-          </form>
-        </div>
-        <form method="dialog" className="modal-backdrop">
-          <button>close</button>
-        </form>
-      </dialog>
     </>
   );
 };

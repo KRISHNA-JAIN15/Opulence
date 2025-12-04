@@ -1,30 +1,54 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import { Provider } from "react-redux";
 import { store } from "./store/store";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
+import AdminLayout from "./components/AdminLayout";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import VerifyEmail from "./pages/VerifyEmail";
+import Products from "./pages/Products";
+import AdminDashboard from "./pages/admin/Dashboard";
+import AddProduct from "./pages/admin/AddProduct";
+import EditProduct from "./pages/admin/EditProduct";
+
+function AppContent() {
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith('/admin');
+
+  return (
+    <div className="flex flex-col min-h-screen">
+      {!isAdminRoute && <Header />}
+      <main className="grow">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/products" element={<Products />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+
+          {/* Admin Routes */}
+          <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
+          <Route path="/admin/products/add" element={<AdminLayout><AddProduct /></AdminLayout>} />
+          <Route
+            path="/admin/products/edit/:id"
+            element={<AdminLayout><EditProduct /></AdminLayout>}
+          />
+
+          {/* Add more routes as needed */}
+        </Routes>
+      </main>
+      {!isAdminRoute && <Footer />}
+    </div>
+  );
+}
 
 function App() {
   return (
     <Provider store={store}>
       <Router>
-        <div className="flex flex-col min-h-screen">
-          <Header />
-          <main className="grow">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Signup />} />
-              <Route path="/verify-email" element={<VerifyEmail />} />
-              {/* Add more routes as needed */}
-            </Routes>
-          </main>
-          <Footer />
-        </div>
+        <AppContent />
       </Router>
     </Provider>
   );

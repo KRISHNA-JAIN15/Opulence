@@ -160,7 +160,16 @@ const createProduct = async (req, res) => {
 // @access  Private/Admin
 const updateProduct = async (req, res) => {
   try {
-    const { name, description, price, inStock, category, isActive } = req.body;
+    const {
+      name,
+      description,
+      price,
+      inStock,
+      category,
+      isActive,
+      featured,
+      discount,
+    } = req.body;
 
     const product = await Product.findById(req.params.id);
 
@@ -178,6 +187,8 @@ const updateProduct = async (req, res) => {
     if (inStock !== undefined) product.inStock = inStock;
     if (category) product.category = category;
     if (isActive !== undefined) product.isActive = isActive;
+    if (featured !== undefined) product.featured = featured;
+    if (discount !== undefined) product.discount = discount;
 
     // If new image is uploaded
     if (req.file) {

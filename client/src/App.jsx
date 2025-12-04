@@ -17,6 +17,7 @@ import Products from "./pages/Products";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AddProduct from "./pages/admin/AddProduct";
 import EditProduct from "./pages/admin/EditProduct";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 function AppContent() {
   const location = useLocation();
@@ -54,7 +55,9 @@ function AppContent() {
             path="/admin/products/edit/:id"
             element={
               <AdminLayout>
-                <EditProduct />
+                <ErrorBoundary>
+                  <EditProduct />
+                </ErrorBoundary>
               </AdminLayout>
             }
           />

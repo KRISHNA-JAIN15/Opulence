@@ -4,7 +4,11 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { ArrowLeft, Upload, X } from "lucide-react";
 import { Link } from "react-router-dom";
-import { getProduct, updateProduct } from "../../store/productSlice";
+import {
+  getProduct,
+  updateProduct,
+  reset as resetProductState,
+} from "../../store/productSlice";
 
 const EditProduct = () => {
   const [imagePreview, setImagePreview] = useState(null);
@@ -40,7 +44,7 @@ const EditProduct = () => {
       dispatch(getProduct(id));
     }
     return () => {
-      dispatch(reset());
+      dispatch(resetProductState());
     };
   }, [id, dispatch]);
 
@@ -48,16 +52,21 @@ const EditProduct = () => {
   useEffect(() => {
     if (currentProduct && !isLoading) {
       reset({
-        name: currentProduct.name,
-        description: currentProduct.description,
-        price: currentProduct.price,
-        inStock: currentProduct.inStock,
-        category: currentProduct.category,
-        isActive: currentProduct.isActive,
+        name: currentProduct.name || "",
+        description: currentProduct.description || "",
+        price: currentProduct.price || "",
+        inStock: currentProduct.inStock || "",
+        category: currentProduct.category || "",
+        isActive:
+          currentProduct.isActive !== undefined
+            ? currentProduct.isActive
+            : true,
         featured: currentProduct.featured || false,
         discount: currentProduct.discount || 0,
       });
-      setImagePreview(currentProduct.image);
+      if (currentProduct.image) {
+        setImagePreview(currentProduct.image);
+      }
     }
   }, [currentProduct, isLoading, reset]);
 
@@ -74,12 +83,27 @@ const EditProduct = () => {
   }, [isError, isSuccess, message, currentProduct, navigate]);
 
   const handleImageChange = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (file) {
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        alert("Please select a valid image file");
+        return;
+      }
+
+      // Validate file size (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert("Image size should be less than 5MB");
+        return;
+      }
+
       setValue("image", file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result);
+      };
+      reader.onerror = () => {
+        alert("Error reading the file");
       };
       reader.readAsDataURL(file);
     }
@@ -88,6 +112,11 @@ const EditProduct = () => {
   const removeImage = () => {
     setValue("image", null);
     setImagePreview(null);
+    // Clear the file input
+    const fileInput = document.getElementById("image-upload");
+    if (fileInput) {
+      fileInput.value = "";
+    }
   };
 
   const onSubmit = async (data) => {
@@ -357,6 +386,7 @@ const EditProduct = () => {
                       accept="image/*"
                       onChange={handleImageChange}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      id="image-upload"
                     />
                   </>
                 )}

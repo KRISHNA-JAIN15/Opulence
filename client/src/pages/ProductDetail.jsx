@@ -37,13 +37,6 @@ const ProductDetail = () => {
     comment: "",
   });
 
-  // Mock additional images for demo
-  const additionalImages = [
-    "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&h=800&fit=crop",
-    "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=800&h=800&fit=crop",
-    "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=800&h=800&fit=crop",
-  ];
-
   // Mock reviews data
   const mockReviews = [
     {
@@ -158,7 +151,11 @@ const ProductDetail = () => {
     ? (product.price * (1 - product.discount / 100)).toFixed(2)
     : product.price;
 
-  const productImages = [product.image, ...additionalImages];
+  // Get all product images (main image + additional images from database)
+  const productImages =
+    product.images && product.images.length > 0
+      ? product.images.map((img) => img.url)
+      : [product.image];
 
   return (
     <div className="min-h-screen bg-white">
@@ -411,14 +408,39 @@ const ProductDetail = () => {
                 <p className="text-gray-700 leading-relaxed mb-6">
                   {product.description}
                 </p>
-                <h4 className="text-lg font-semibold mb-3">Key Features:</h4>
-                <ul className="list-disc pl-6 space-y-2 text-gray-700">
-                  <li>Premium quality materials and construction</li>
-                  <li>Carefully designed for maximum comfort and durability</li>
-                  <li>Suitable for both casual and professional use</li>
-                  <li>Easy maintenance and long-lasting performance</li>
-                  <li>Available in multiple sizes and configurations</li>
-                </ul>
+                {product.keyFeatures && (
+                  <>
+                    <h4 className="text-lg font-semibold mb-3">
+                      Key Features:
+                    </h4>
+                    <ul className="list-disc pl-6 space-y-2 text-gray-700">
+                      {product.keyFeatures
+                        .split("\n")
+                        .filter((feature) => feature.trim())
+                        .map((feature, index) => (
+                          <li key={index}>{feature.trim()}</li>
+                        ))}
+                    </ul>
+                  </>
+                )}
+                {product.tags && (
+                  <>
+                    <h4 className="text-lg font-semibold mb-3 mt-6">Tags:</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {product.tags
+                        .split(",")
+                        .filter((tag) => tag.trim())
+                        .map((tag, index) => (
+                          <span
+                            key={index}
+                            className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
+                          >
+                            {tag.trim()}
+                          </span>
+                        ))}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
@@ -438,20 +460,34 @@ const ProductDetail = () => {
                         <dt className="font-medium text-gray-600">Category:</dt>
                         <dd className="text-gray-900">{product.category}</dd>
                       </div>
+                      {product.brand && (
+                        <div className="flex justify-between border-b border-gray-200 pb-2">
+                          <dt className="font-medium text-gray-600">Brand:</dt>
+                          <dd className="text-gray-900">{product.brand}</dd>
+                        </div>
+                      )}
                       <div className="flex justify-between border-b border-gray-200 pb-2">
                         <dt className="font-medium text-gray-600">SKU:</dt>
-                        <dd className="text-gray-900">{product._id}</dd>
+                        <dd className="text-gray-900">
+                          {product.sku || product._id}
+                        </dd>
                       </div>
-                      <div className="flex justify-between border-b border-gray-200 pb-2">
-                        <dt className="font-medium text-gray-600">Weight:</dt>
-                        <dd className="text-gray-900">1.2 kg</dd>
-                      </div>
-                      <div className="flex justify-between border-b border-gray-200 pb-2">
-                        <dt className="font-medium text-gray-600">
-                          Dimensions:
-                        </dt>
-                        <dd className="text-gray-900">25 x 15 x 10 cm</dd>
-                      </div>
+                      {product.weight && (
+                        <div className="flex justify-between border-b border-gray-200 pb-2">
+                          <dt className="font-medium text-gray-600">Weight:</dt>
+                          <dd className="text-gray-900">{product.weight}</dd>
+                        </div>
+                      )}
+                      {product.dimensions && (
+                        <div className="flex justify-between border-b border-gray-200 pb-2">
+                          <dt className="font-medium text-gray-600">
+                            Dimensions:
+                          </dt>
+                          <dd className="text-gray-900">
+                            {product.dimensions}
+                          </dd>
+                        </div>
+                      )}
                     </dl>
                   </div>
                   <div>
@@ -459,22 +495,34 @@ const ProductDetail = () => {
                       Additional Details
                     </h4>
                     <dl className="space-y-3">
-                      <div className="flex justify-between border-b border-gray-200 pb-2">
-                        <dt className="font-medium text-gray-600">Material:</dt>
-                        <dd className="text-gray-900">Premium Grade</dd>
-                      </div>
-                      <div className="flex justify-between border-b border-gray-200 pb-2">
-                        <dt className="font-medium text-gray-600">Color:</dt>
-                        <dd className="text-gray-900">Multiple Options</dd>
-                      </div>
-                      <div className="flex justify-between border-b border-gray-200 pb-2">
-                        <dt className="font-medium text-gray-600">Warranty:</dt>
-                        <dd className="text-gray-900">2 Years</dd>
-                      </div>
-                      <div className="flex justify-between border-b border-gray-200 pb-2">
-                        <dt className="font-medium text-gray-600">Origin:</dt>
-                        <dd className="text-gray-900">Made in Europe</dd>
-                      </div>
+                      {product.material && (
+                        <div className="flex justify-between border-b border-gray-200 pb-2">
+                          <dt className="font-medium text-gray-600">
+                            Material:
+                          </dt>
+                          <dd className="text-gray-900">{product.material}</dd>
+                        </div>
+                      )}
+                      {product.color && (
+                        <div className="flex justify-between border-b border-gray-200 pb-2">
+                          <dt className="font-medium text-gray-600">Color:</dt>
+                          <dd className="text-gray-900">{product.color}</dd>
+                        </div>
+                      )}
+                      {product.warranty && (
+                        <div className="flex justify-between border-b border-gray-200 pb-2">
+                          <dt className="font-medium text-gray-600">
+                            Warranty:
+                          </dt>
+                          <dd className="text-gray-900">{product.warranty}</dd>
+                        </div>
+                      )}
+                      {product.origin && (
+                        <div className="flex justify-between border-b border-gray-200 pb-2">
+                          <dt className="font-medium text-gray-600">Origin:</dt>
+                          <dd className="text-gray-900">{product.origin}</dd>
+                        </div>
+                      )}
                     </dl>
                   </div>
                 </div>

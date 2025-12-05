@@ -29,7 +29,7 @@ router.post(
   "/",
   authenticateToken,
   adminOnly,
-  upload.single("image"),
+  upload.array("images", 5),
   createProduct
 );
 
@@ -37,7 +37,7 @@ router.put(
   "/:id",
   authenticateToken,
   adminOnly,
-  upload.single("image"),
+  upload.array("images", 5),
   updateProduct
 );
 

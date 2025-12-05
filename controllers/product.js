@@ -109,7 +109,26 @@ const getProductById = async (req, res) => {
 // @access  Private/Admin
 const createProduct = async (req, res) => {
   try {
-    const { name, description, price, inStock, category } = req.body;
+    const {
+      name,
+      description,
+      price,
+      inStock,
+      category,
+      brand,
+      sku,
+      weight,
+      dimensions,
+      material,
+      color,
+      warranty,
+      origin,
+      tags,
+      keyFeatures,
+      isActive,
+      featured,
+      discount,
+    } = req.body;
 
     // Validate required fields
     if (!name || !description || !price || !category) {
@@ -119,19 +138,29 @@ const createProduct = async (req, res) => {
       });
     }
 
-    // Check if image is uploaded
-    if (!req.file) {
+    // Check if images are uploaded
+    if (!req.files || req.files.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "Please upload a product image",
+        message: "Please upload at least one product image",
       });
     }
 
-    // Upload image to Cloudinary
-    const cloudinaryResult = await uploadToCloudinary(
-      req.file.buffer,
-      "opulence/products"
-    );
+    // Upload all images to Cloudinary
+    const imageUploads = [];
+    for (const file of req.files) {
+      const cloudinaryResult = await uploadToCloudinary(
+        file.buffer,
+        "opulence/products"
+      );
+      imageUploads.push({
+        url: cloudinaryResult.secure_url,
+        publicId: cloudinaryResult.public_id,
+      });
+    }
+
+    // First image becomes the main image
+    const mainImage = imageUploads[0];
 
     // Create product
     const product = await Product.create({
@@ -140,8 +169,22 @@ const createProduct = async (req, res) => {
       price,
       inStock: inStock || 0,
       category,
-      image: cloudinaryResult.secure_url,
-      cloudinaryPublicId: cloudinaryResult.public_id,
+      brand,
+      sku,
+      weight,
+      dimensions,
+      material,
+      color,
+      warranty,
+      origin,
+      tags,
+      keyFeatures,
+      isActive: isActive !== undefined ? isActive : true,
+      featured: featured || false,
+      discount: discount || 0,
+      image: mainImage.url,
+      cloudinaryPublicId: mainImage.publicId,
+      images: imageUploads,
       createdBy: req.user._id,
     });
 
@@ -170,6 +213,16 @@ const updateProduct = async (req, res) => {
       price,
       inStock,
       category,
+      brand,
+      sku,
+      weight,
+      dimensions,
+      material,
+      color,
+      warranty,
+      origin,
+      tags,
+      keyFeatures,
       isActive,
       featured,
       discount,
@@ -190,25 +243,50 @@ const updateProduct = async (req, res) => {
     if (price !== undefined) product.price = price;
     if (inStock !== undefined) product.inStock = inStock;
     if (category) product.category = category;
+    if (brand !== undefined) product.brand = brand;
+    if (sku !== undefined) product.sku = sku;
+    if (weight !== undefined) product.weight = weight;
+    if (dimensions !== undefined) product.dimensions = dimensions;
+    if (material !== undefined) product.material = material;
+    if (color !== undefined) product.color = color;
+    if (warranty !== undefined) product.warranty = warranty;
+    if (origin !== undefined) product.origin = origin;
+    if (tags !== undefined) product.tags = tags;
+    if (keyFeatures !== undefined) product.keyFeatures = keyFeatures;
     if (isActive !== undefined) product.isActive = isActive;
     if (featured !== undefined) product.featured = featured;
     if (discount !== undefined) product.discount = discount;
 
-    // If new image is uploaded
-    if (req.file) {
-      // Delete old image from Cloudinary
+    // If new images are uploaded
+    if (req.files && req.files.length > 0) {
+      // Delete old images from Cloudinary
+      if (product.images && product.images.length > 0) {
+        for (const img of product.images) {
+          await deleteFromCloudinary(img.publicId);
+        }
+      }
       if (product.cloudinaryPublicId) {
         await deleteFromCloudinary(product.cloudinaryPublicId);
       }
 
-      // Upload new image
-      const cloudinaryResult = await uploadToCloudinary(
-        req.file.buffer,
-        "opulence/products"
-      );
+      // Upload new images
+      const imageUploads = [];
+      for (const file of req.files) {
+        const cloudinaryResult = await uploadToCloudinary(
+          file.buffer,
+          "opulence/products"
+        );
+        imageUploads.push({
+          url: cloudinaryResult.secure_url,
+          publicId: cloudinaryResult.public_id,
+        });
+      }
 
-      product.image = cloudinaryResult.secure_url;
-      product.cloudinaryPublicId = cloudinaryResult.public_id;
+      // Update main image and images array
+      const mainImage = imageUploads[0];
+      product.image = mainImage.url;
+      product.cloudinaryPublicId = mainImage.publicId;
+      product.images = imageUploads;
     }
 
     product.updatedBy = req.user._id;

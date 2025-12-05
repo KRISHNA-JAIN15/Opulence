@@ -11,7 +11,7 @@ import {
 } from "../../store/productSlice";
 
 const EditProduct = () => {
-  const [imagePreview, setImagePreview] = useState(null);
+  const [images, setImages] = useState([]);
   const navigate = useNavigate();
   const { id } = useParams();
   const dispatch = useDispatch();
@@ -25,6 +25,7 @@ const EditProduct = () => {
     formState: { errors },
     setValue,
     reset,
+    watch,
   } = useForm({
     defaultValues: {
       name: "",
@@ -32,6 +33,16 @@ const EditProduct = () => {
       price: "",
       inStock: "",
       category: "",
+      brand: "",
+      sku: "",
+      weight: "",
+      dimensions: "",
+      material: "",
+      color: "",
+      warranty: "",
+      origin: "",
+      tags: "",
+      keyFeatures: "",
       isActive: true,
       featured: false,
       discount: 0,
@@ -57,6 +68,16 @@ const EditProduct = () => {
         price: currentProduct.price || "",
         inStock: currentProduct.inStock || "",
         category: currentProduct.category || "",
+        brand: currentProduct.brand || "",
+        sku: currentProduct.sku || "",
+        weight: currentProduct.weight || "",
+        dimensions: currentProduct.dimensions || "",
+        material: currentProduct.material || "",
+        color: currentProduct.color || "",
+        warranty: currentProduct.warranty || "",
+        origin: currentProduct.origin || "",
+        tags: currentProduct.tags || "",
+        keyFeatures: currentProduct.keyFeatures || "",
         isActive:
           currentProduct.isActive !== undefined
             ? currentProduct.isActive
@@ -64,8 +85,22 @@ const EditProduct = () => {
         featured: currentProduct.featured || false,
         discount: currentProduct.discount || 0,
       });
-      if (currentProduct.image) {
-        setImagePreview(currentProduct.image);
+      // Load existing images
+      if (currentProduct.images && currentProduct.images.length > 0) {
+        const existingImages = currentProduct.images.map((img, index) => ({
+          id: `existing-${index}`,
+          preview: img.url,
+          isExisting: true,
+        }));
+        setImages(existingImages);
+      } else if (currentProduct.image) {
+        setImages([
+          {
+            id: "existing-main",
+            preview: currentProduct.image,
+            isExisting: true,
+          },
+        ]);
       }
     }
   }, [currentProduct, isLoading, reset]);
@@ -83,40 +118,37 @@ const EditProduct = () => {
   }, [isError, isSuccess, message, currentProduct, navigate]);
 
   const handleImageChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Validate file type
-      if (!file.type.startsWith("image/")) {
-        alert("Please select a valid image file");
-        return;
-      }
-
-      // Validate file size (5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert("Image size should be less than 5MB");
-        return;
-      }
-
-      setValue("image", file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
-      };
-      reader.onerror = () => {
-        alert("Error reading the file");
-      };
-      reader.readAsDataURL(file);
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
+      const newImages = [];
+      files.forEach((file) => {
+        if (file.type.startsWith("image/") && file.size <= 5 * 1024 * 1024) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            newImages.push({
+              file,
+              preview: reader.result,
+              id: Date.now() + Math.random(),
+            });
+            if (newImages.length === files.length) {
+              setImages((prev) => [...prev, ...newImages]);
+            }
+          };
+          reader.readAsDataURL(file);
+        } else {
+          alert("Please select valid image files under 5MB");
+        }
+      });
+      setValue("images", [...images, ...files]);
     }
   };
 
-  const removeImage = () => {
-    setValue("image", null);
-    setImagePreview(null);
-    // Clear the file input
-    const fileInput = document.getElementById("image-upload");
-    if (fileInput) {
-      fileInput.value = "";
-    }
+  const removeImage = (imageId) => {
+    setImages((prev) => prev.filter((img) => img.id !== imageId));
+    setValue(
+      "images",
+      images.filter((img) => img.id !== imageId).map((img) => img.file)
+    );
   };
 
   const onSubmit = async (data) => {
@@ -126,12 +158,26 @@ const EditProduct = () => {
     formData.append("price", data.price);
     formData.append("inStock", data.inStock);
     formData.append("category", data.category);
+    formData.append("brand", data.brand || "");
+    formData.append("sku", data.sku || "");
+    formData.append("weight", data.weight || "");
+    formData.append("dimensions", data.dimensions || "");
+    formData.append("material", data.material || "");
+    formData.append("color", data.color || "");
+    formData.append("warranty", data.warranty || "");
+    formData.append("origin", data.origin || "");
+    formData.append("tags", data.tags || "");
+    formData.append("keyFeatures", data.keyFeatures || "");
     formData.append("isActive", data.isActive);
     formData.append("featured", data.featured);
     formData.append("discount", data.discount);
 
-    if (data.image) {
-      formData.append("image", data.image);
+    // Only append new images (not existing ones)
+    const newImages = images.filter((img) => !img.isExisting && img.file);
+    if (newImages.length > 0) {
+      newImages.forEach((img) => {
+        formData.append("images", img.file);
+      });
     }
 
     dispatch(updateProduct({ id, productData: formData }))
@@ -170,7 +216,7 @@ const EditProduct = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="mb-8">
         <Link
@@ -191,7 +237,7 @@ const EditProduct = () => {
         onSubmit={handleSubmit(onSubmit)}
         className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
       >
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column */}
           <div className="space-y-6">
             {/* Product Name */}
@@ -222,6 +268,9 @@ const EditProduct = () => {
             <div>
               <label className="block text-sm font-bold text-gray-800 mb-2">
                 Description *
+                <span className="text-gray-500 text-sm font-normal ml-2">
+                  ({watch("description")?.length || 0}/1000)
+                </span>
               </label>
               <textarea
                 rows={4}
@@ -230,6 +279,10 @@ const EditProduct = () => {
                   minLength: {
                     value: 10,
                     message: "Description must be at least 10 characters",
+                  },
+                  maxLength: {
+                    value: 1000,
+                    message: "Description cannot exceed 1000 characters",
                   },
                 })}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition"
@@ -242,6 +295,67 @@ const EditProduct = () => {
               )}
             </div>
 
+            {/* Brand and SKU */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-800 mb-2">
+                  Brand
+                </label>
+                <input
+                  type="text"
+                  {...register("brand")}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition"
+                  placeholder="Enter brand name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-800 mb-2">
+                  SKU
+                </label>
+                <input
+                  type="text"
+                  {...register("sku")}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition"
+                  placeholder="Enter SKU"
+                />
+              </div>
+            </div>
+
+            {/* Tags */}
+            <div>
+              <label className="block text-sm font-bold text-gray-800 mb-2">
+                Tags
+                <span className="text-gray-500 text-sm font-normal ml-2">
+                  (comma-separated)
+                </span>
+              </label>
+              <input
+                type="text"
+                {...register("tags")}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition"
+                placeholder="e.g., premium, durable, comfortable"
+              />
+            </div>
+
+            {/* Key Features */}
+            <div>
+              <label className="block text-sm font-bold text-gray-800 mb-2">
+                Key Features
+                <span className="text-gray-500 text-sm font-normal ml-2">
+                  (one per line)
+                </span>
+              </label>
+              <textarea
+                rows={4}
+                {...register("keyFeatures")}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition"
+                placeholder="Premium quality materials and construction&#10;Carefully designed for maximum comfort&#10;Easy maintenance and long-lasting performance&#10;Available in multiple configurations"
+              />
+            </div>
+          </div>
+
+          {/* Middle Column */}
+          <div className="space-y-6">
             {/* Price and Stock */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -319,6 +433,84 @@ const EditProduct = () => {
               )}
             </div>
 
+            {/* Weight and Dimensions */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-800 mb-2">
+                  Weight
+                </label>
+                <input
+                  type="text"
+                  {...register("weight")}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition"
+                  placeholder="e.g., 1.2 kg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-800 mb-2">
+                  Dimensions
+                </label>
+                <input
+                  type="text"
+                  {...register("dimensions")}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition"
+                  placeholder="e.g., 25 x 15 x 10 cm"
+                />
+              </div>
+            </div>
+
+            {/* Material and Color */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-800 mb-2">
+                  Material
+                </label>
+                <input
+                  type="text"
+                  {...register("material")}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition"
+                  placeholder="e.g., Premium Grade"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-800 mb-2">
+                  Color
+                </label>
+                <input
+                  type="text"
+                  {...register("color")}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition"
+                  placeholder="e.g., Multiple Options"
+                />
+              </div>
+            </div>
+
+            {/* Warranty and Origin */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-800 mb-2">
+                  Warranty
+                </label>
+                <input
+                  type="text"
+                  {...register("warranty")}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition"
+                  placeholder="e.g., 2 Years"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-800 mb-2">
+                  Origin
+                </label>
+                <input
+                  type="text"
+                  {...register("origin")}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition"
+                  placeholder="e.g., Made in Europe"
+                />
+              </div>
+            </div>
+
             {/* Discount */}
             <div>
               <label className="block text-sm font-bold text-gray-800 mb-2">
@@ -351,46 +543,67 @@ const EditProduct = () => {
 
           {/* Right Column */}
           <div className="space-y-6">
-            {/* Image Upload */}
+            {/* Multiple Images Upload */}
             <div>
               <label className="block text-sm font-bold text-gray-800 mb-2">
-                Product Image
+                Product Images
+                <span className="text-gray-500 text-sm font-normal ml-2">
+                  ({images.length} images)
+                </span>
               </label>
-              <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition">
-                {imagePreview ? (
-                  <div className="relative">
-                    <img
-                      src={imagePreview}
-                      alt="Preview"
-                      className="w-full h-64 object-cover rounded-lg"
-                    />
-                    <button
-                      type="button"
-                      onClick={removeImage}
-                      className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600 mb-2">
-                      Click to upload or drag and drop
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      PNG, JPG, GIF up to 5MB
-                    </p>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                      id="image-upload"
-                    />
-                  </>
-                )}
+
+              {/* Upload Area */}
+              <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition mb-4">
+                <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600 mb-2">
+                  Click to upload or drag and drop
+                </p>
+                <p className="text-sm text-gray-500">
+                  PNG, JPG, GIF up to 5MB each (Max 5 images)
+                </p>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageChange}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  disabled={images.length >= 5}
+                />
               </div>
+
+              {/* Image Previews */}
+              {images.length > 0 && (
+                <div className="grid grid-cols-2 gap-3">
+                  {images.map((img, index) => (
+                    <div key={img.id} className="relative">
+                      <img
+                        src={img.preview}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-32 object-cover rounded-lg border"
+                      />
+                      {!img.isExisting && (
+                        <button
+                          type="button"
+                          onClick={() => removeImage(img.id)}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                      {index === 0 && (
+                        <div className="absolute top-2 left-2 bg-blue-500 text-white px-2 py-1 rounded text-xs">
+                          Main
+                        </div>
+                      )}
+                      {img.isExisting && (
+                        <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded text-xs">
+                          Current
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Status Toggles */}

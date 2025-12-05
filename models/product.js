@@ -31,6 +31,18 @@ const productSchema = new mongoose.Schema(
       type: String,
       required: [true, "Product image is required"],
     },
+    images: [
+      {
+        url: {
+          type: String,
+          required: true,
+        },
+        publicId: {
+          type: String,
+          required: true,
+        },
+      },
+    ],
     cloudinaryPublicId: {
       type: String,
     },
@@ -47,6 +59,49 @@ const productSchema = new mongoose.Schema(
     featured: {
       type: Boolean,
       default: false,
+    },
+    // Additional product specifications
+    brand: {
+      type: String,
+      trim: true,
+    },
+    sku: {
+      type: String,
+      trim: true,
+      unique: true,
+      sparse: true, // Allow null values but ensure uniqueness when present
+    },
+    weight: {
+      type: String,
+      trim: true,
+    },
+    dimensions: {
+      type: String,
+      trim: true,
+    },
+    material: {
+      type: String,
+      trim: true,
+    },
+    color: {
+      type: String,
+      trim: true,
+    },
+    warranty: {
+      type: String,
+      trim: true,
+    },
+    origin: {
+      type: String,
+      trim: true,
+    },
+    tags: {
+      type: String,
+      trim: true,
+    },
+    keyFeatures: {
+      type: String,
+      trim: true,
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,

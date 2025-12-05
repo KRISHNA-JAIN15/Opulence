@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import {
@@ -12,6 +12,7 @@ import {
   Phone,
 } from "lucide-react";
 import { clearCart } from "../store/cartSlice";
+import { getProfile } from "../store/profileSlice";
 
 const Checkout = () => {
   const dispatch = useDispatch();
@@ -19,6 +20,8 @@ const Checkout = () => {
   const { cartItems, cartTotal, cartQuantity } = useSelector(
     (state) => state.cart
   );
+  const { profile } = useSelector((state) => state.profile);
+  const { user } = useSelector((state) => state.auth);
 
   const [formData, setFormData] = useState({
     // Shipping Information
@@ -52,6 +55,57 @@ const Checkout = () => {
   const [errors, setErrors] = useState({});
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
+
+  // Load profile data on mount
+  useEffect(() => {
+    if (user) {
+      dispatch(getProfile());
+    }
+  }, [dispatch, user]);
+
+  // Pre-populate form with profile data when profile loads
+  useEffect(() => {
+    if (profile) {
+      const defaultAddress = profile.addresses?.find((addr) => addr.isDefault);
+      const defaultPayment = profile.paymentMethods?.find((pm) => pm.isDefault);
+
+      if (defaultAddress && !formData.firstName) {
+        setFormData((prev) => ({
+          ...prev,
+          firstName: defaultAddress.firstName,
+          lastName: defaultAddress.lastName,
+          address: defaultAddress.address,
+          apartment: defaultAddress.apartment || "",
+          city: defaultAddress.city,
+          state: defaultAddress.state,
+          zipCode: defaultAddress.zipCode,
+          country: defaultAddress.country,
+        }));
+      }
+
+      if (defaultPayment && !formData.cardholderName) {
+        setFormData((prev) => ({
+          ...prev,
+          cardholderName: defaultPayment.cardholderName,
+        }));
+      }
+
+      // Pre-populate email and phone from profile
+      if (profile.personalInfo && !formData.email) {
+        setFormData((prev) => ({
+          ...prev,
+          email: user.email || "",
+          phone: profile.personalInfo.phone || "",
+        }));
+      }
+    }
+  }, [
+    profile,
+    formData.firstName,
+    formData.cardholderName,
+    formData.email,
+    user,
+  ]);
 
   // Redirect to cart if empty
   if (cartItems.length === 0 && !orderComplete) {
@@ -241,10 +295,38 @@ const Checkout = () => {
               {/* Shipping Information */}
               <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div className="px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <MapPin size={20} />
-                    Shipping Information
-                  </h2>
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <MapPin size={20} />
+                      Shipping Information
+                    </h2>
+                    {profile?.addresses?.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const defaultAddr = profile.addresses.find(
+                            (addr) => addr.isDefault
+                          );
+                          if (defaultAddr) {
+                            setFormData((prev) => ({
+                              ...prev,
+                              firstName: defaultAddr.firstName,
+                              lastName: defaultAddr.lastName,
+                              address: defaultAddr.address,
+                              apartment: defaultAddr.apartment || "",
+                              city: defaultAddr.city,
+                              state: defaultAddr.state,
+                              zipCode: defaultAddr.zipCode,
+                              country: defaultAddr.country,
+                            }));
+                          }
+                        }}
+                        className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                      >
+                        Use Saved Address
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="px-6 py-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>

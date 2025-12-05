@@ -53,13 +53,19 @@ const cartSlice = createSlice({
       );
 
       if (existingItem) {
-        // If item exists, update quantity
-        existingItem.quantity += quantity;
+        // Check if adding quantity exceeds stock
+        const newQuantity = existingItem.quantity + quantity;
+        if (newQuantity <= product.inStock) {
+          existingItem.quantity = newQuantity;
+        } else {
+          existingItem.quantity = product.inStock; // Set to max available
+        }
       } else {
-        // If item doesn't exist, add new item
+        // If item doesn't exist, add new item with validated quantity
+        const validQuantity = Math.min(quantity, product.inStock);
         state.cartItems.push({
           ...product,
-          quantity: quantity,
+          quantity: validQuantity,
         });
       }
 
@@ -94,7 +100,14 @@ const cartSlice = createSlice({
       );
 
       if (existingItem && quantity > 0) {
-        existingItem.quantity = quantity;
+        // Validate quantity against stock
+        const validQuantity = Math.min(quantity, existingItem.inStock);
+        existingItem.quantity = validQuantity;
+      } else if (existingItem && quantity <= 0) {
+        // Remove item if quantity is 0 or less
+        state.cartItems = state.cartItems.filter(
+          (item) => item._id !== productId
+        );
       }
 
       // Calculate new totals
@@ -121,6 +134,53 @@ const cartSlice = createSlice({
       state.cartTotal = totals.cartTotal;
       state.cartQuantity = totals.cartQuantity;
     },
+
+    // Increment quantity by 1
+    incrementQuantity: (state, action) => {
+      const productId = action.payload;
+      const existingItem = state.cartItems.find(
+        (item) => item._id === productId
+      );
+
+      if (existingItem && existingItem.quantity < existingItem.inStock) {
+        existingItem.quantity += 1;
+
+        // Calculate new totals
+        const totals = calculateCartTotals(state.cartItems);
+        state.cartTotal = totals.cartTotal;
+        state.cartQuantity = totals.cartQuantity;
+
+        // Save to localStorage
+        saveCartToLocalStorage(state.cartItems);
+      }
+    },
+
+    // Decrement quantity by 1
+    decrementQuantity: (state, action) => {
+      const productId = action.payload;
+      const existingItem = state.cartItems.find(
+        (item) => item._id === productId
+      );
+
+      if (existingItem) {
+        if (existingItem.quantity > 1) {
+          existingItem.quantity -= 1;
+        } else {
+          // Remove item if quantity becomes 0
+          state.cartItems = state.cartItems.filter(
+            (item) => item._id !== productId
+          );
+        }
+
+        // Calculate new totals
+        const totals = calculateCartTotals(state.cartItems);
+        state.cartTotal = totals.cartTotal;
+        state.cartQuantity = totals.cartQuantity;
+
+        // Save to localStorage
+        saveCartToLocalStorage(state.cartItems);
+      }
+    },
   },
 });
 
@@ -130,6 +190,8 @@ export const {
   updateCartQuantity,
   clearCart,
   initializeCartTotals,
+  incrementQuantity,
+  decrementQuantity,
 } = cartSlice.actions;
 
 export default cartSlice.reducer;

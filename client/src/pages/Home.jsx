@@ -205,7 +205,17 @@ const ProductCard = ({ product }) => {
     e.preventDefault(); // Prevent navigation when clicking the button
     e.stopPropagation();
     dispatch(addToCart({ product, quantity: 1 }));
-    // Optional: Show a toast notification here
+
+    // Simple success feedback
+    const button = e.target.closest("button");
+    const originalText = button.innerHTML;
+    button.innerHTML = "<span>Added!</span>";
+    button.style.backgroundColor = "#22c55e";
+
+    setTimeout(() => {
+      button.innerHTML = originalText;
+      button.style.backgroundColor = "";
+    }, 1500);
   };
 
   return (

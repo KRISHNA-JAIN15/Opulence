@@ -205,7 +205,7 @@ const Header = () => {
               >
                 <ShoppingCart size={22} strokeWidth={2} />
                 {cartQuantity > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 bg-black text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                  <span className="cart-badge absolute -top-0.5 -right-0.5 bg-black text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
                     {cartQuantity}
                   </span>
                 )}

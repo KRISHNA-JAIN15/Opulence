@@ -19,6 +19,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { getProduct, getRelatedProducts } from "../store/productSlice";
+import { addToCart } from "../store/cartSlice";
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -91,8 +92,16 @@ const ProductDetail = () => {
   };
 
   const handleAddToCart = () => {
-    // Add to cart logic here
-    console.log(`Added ${quantity} of product ${id} to cart`);
+    if (currentProduct) {
+      dispatch(addToCart({ product: currentProduct, quantity }));
+
+      // Show success message
+      console.log(`Added ${quantity} of ${currentProduct.name} to cart`);
+
+      // You could add a toast notification here
+      // For now, just reset quantity to 1 to indicate success
+      setQuantity(1);
+    }
   };
 
   const handleReviewSubmit = (e) => {
@@ -215,7 +224,7 @@ const ProductDetail = () => {
                 <button
                   key={index}
                   onClick={() => setSelectedImage(index)}
-                  className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition ${
+                  className={`shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition ${
                     selectedImage === index
                       ? "border-black"
                       : "border-gray-200 hover:border-gray-300"

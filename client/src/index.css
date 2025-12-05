@@ -97,6 +97,90 @@ button {
   background-repeat: no-repeat;
 }
 
+/* Cart specific styles */
+.cart-item-animation {
+  transition: all 0.2s ease-in-out;
+}
+
+.cart-item-updating {
+  transform: scale(0.95);
+  opacity: 0.7;
+}
+
+.cart-quantity-input::-webkit-outer-spin-button,
+.cart-quantity-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.cart-quantity-input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Checkout form styles */
+.checkout-form-section {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+}
+
+.checkout-input-focus {
+  border-color: #000;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Loading animation for buttons */
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.btn-loading {
+  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Enhanced button styles */
+.btn-secondary {
+  background-color: #f3f4f6;
+  color: #374151;
+  padding: 12px 24px;
+  font-weight: 600;
+  text-transform: uppercase;
+  border: 1px solid #d1d5db;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+  background-color: #e5e7eb;
+  border-color: #9ca3af;
+  transform: translateY(-1px);
+}
+
+/* Cart badge animation */
+@keyframes bounce-in {
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.cart-badge {
+  animation: bounce-in 0.3s ease-out;
+}
+
 .hero-overlay {
   position: absolute;
   inset: 0;

@@ -1,11 +1,20 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Truck, Shield, Award, Headphones } from "lucide-react";
+import {
+  ArrowRight,
+  Truck,
+  Shield,
+  Award,
+  Headphones,
+  ShoppingCart,
+  Eye,
+} from "lucide-react";
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   getFeaturedProducts,
   getDiscountedProducts,
 } from "../store/productSlice";
+import { addToCart } from "../store/cartSlice";
 
 const Home = () => {
   const dispatch = useDispatch();
@@ -183,6 +192,8 @@ const Home = () => {
 
 // Product Card Component
 const ProductCard = ({ product }) => {
+  const dispatch = useDispatch();
+
   // Calculate discounted price and original price
   const hasDiscount = product.discount > 0;
   const originalPrice = hasDiscount ? product.price : null;
@@ -190,30 +201,60 @@ const ProductCard = ({ product }) => {
     ? (product.price * (1 - product.discount / 100)).toFixed(2)
     : product.price;
 
+  const handleAddToCart = (e) => {
+    e.preventDefault(); // Prevent navigation when clicking the button
+    e.stopPropagation();
+    dispatch(addToCart({ product, quantity: 1 }));
+    // Optional: Show a toast notification here
+  };
+
   return (
-    <Link to={`/products/${product._id}`} className="product-card group">
+    <div className="product-card group bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition">
       <div className="relative aspect-square overflow-hidden bg-gray-100">
         {hasDiscount && (
           <span className="discount-badge">-{product.discount}%</span>
         )}
-        <img
-          src={product.image}
-          alt={product.name}
-          className="w-full h-full object-cover"
-        />
+        <Link to={`/products/${product._id}`}>
+          <img
+            src={product.image}
+            alt={product.name}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        </Link>
       </div>
-      <div className="p-5">
-        <h3 className="font-bold text-sm mb-3 line-clamp-2 uppercase tracking-wide leading-snug min-h-10">
-          {product.name}
-        </h3>
-        <div className="flex items-center gap-2">
+      <div className="p-4">
+        <Link to={`/products/${product._id}`}>
+          <h3 className="font-bold text-sm mb-3 line-clamp-2 uppercase tracking-wide leading-snug min-h-10 hover:text-gray-700 transition">
+            {product.name}
+          </h3>
+        </Link>
+        <div className="flex items-center gap-2 mb-4">
           {hasDiscount && originalPrice && (
             <span className="price-original">€{originalPrice}</span>
           )}
           <span className="price-current">€{discountedPrice}</span>
         </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2">
+          <Link
+            to={`/products/${product._id}`}
+            className="flex items-center justify-center gap-1 px-3 py-2 border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:border-black hover:text-black transition flex-1"
+          >
+            <Eye size={16} />
+            <span>View</span>
+          </Link>
+          <button
+            onClick={handleAddToCart}
+            disabled={product.inStock === 0}
+            className="flex items-center justify-center gap-1 px-3 py-2 bg-black text-white rounded-md text-sm font-medium hover:bg-gray-800 transition flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <ShoppingCart size={16} />
+            <span>Add to Cart</span>
+          </button>
+        </div>
       </div>
-    </Link>
+    </div>
   );
 };
 

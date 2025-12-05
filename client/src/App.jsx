@@ -21,13 +21,19 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import AddProduct from "./pages/admin/AddProduct";
 import EditProduct from "./pages/admin/EditProduct";
 import ErrorBoundary from "./components/ErrorBoundary";
+import ScrollToTop from "./components/ScrollToTop";
+import PageLoader from "./components/PageLoader";
+import usePageLoading from "./hooks/usePageLoading";
 
 function AppContent() {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith("/admin");
+  const isLoading = usePageLoading(300);
 
   return (
     <div className="flex flex-col min-h-screen">
+      <ScrollToTop />
+      {isLoading && <PageLoader />}
       {!isAdminRoute && <Header />}
       <main className="grow">
         <Routes>

@@ -25,7 +25,9 @@ const getAllProducts = async (req, res) => {
     const filter = { isActive: true };
 
     if (category) {
-      filter.category = category;
+      console.log(`Filtering by category: "${category}"`);
+      filter.category = { $regex: new RegExp(`^${category}$`, "i") };
+      console.log("Category filter:", filter.category);
     }
 
     if (minPrice || maxPrice) {
@@ -46,6 +48,7 @@ const getAllProducts = async (req, res) => {
     sort[sortBy] = order === "asc" ? 1 : -1;
 
     // Execute query
+    console.log("Final filter object:", filter);
     const products = await Product.find(filter)
       .sort(sort)
       .skip(skip)
@@ -53,6 +56,7 @@ const getAllProducts = async (req, res) => {
       .select("-__v");
 
     const total = await Product.countDocuments(filter);
+    console.log(`Found ${products.length} products, total: ${total}`);
 
     res.status(200).json({
       success: true,

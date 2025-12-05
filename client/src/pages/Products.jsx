@@ -1,8 +1,16 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { getProducts, getCategories, reset } from "../store/productSlice";
-import { Search, Grid, List, Filter, Star, ShoppingCart } from "lucide-react";
+import { getProducts, getCategories } from "../store/productSlice";
+import {
+  Search,
+  Grid,
+  List,
+  Filter,
+  Star,
+  ShoppingCart,
+  Eye,
+} from "lucide-react";
 
 const Products = () => {
   const [searchParams] = useSearchParams();
@@ -19,27 +27,59 @@ const Products = () => {
     useSelector((state) => state.products);
 
   const searchQuery = searchParams.get("search");
+  const categoryFromUrl = searchParams.get("category");
 
+  // Initialize categories and handle URL category
   useEffect(() => {
     dispatch(getCategories());
 
-    const filters = {};
-    if (searchQuery) {
-      filters.search = searchQuery;
-      setSearchTerm(searchQuery);
+    // Set initial category from URL if present
+    if (categoryFromUrl) {
+      console.log("Setting initial category from URL:", categoryFromUrl);
+      setSelectedCategory(categoryFromUrl);
     }
-    if (selectedCategory) filters.category = selectedCategory;
-    if (priceRange.min) filters.minPrice = priceRange.min;
-    if (priceRange.max) filters.maxPrice = priceRange.max;
-    if (sortBy) filters.sortBy = sortBy;
-    if (sortOrder) filters.order = sortOrder;
+  }, [dispatch, categoryFromUrl]);
 
-    dispatch(getProducts(filters));
+  // Fetch products when filters change
+  useEffect(() => {
+    // Don't fetch if we're still waiting for URL category to be processed
+    if (categoryFromUrl && !selectedCategory) {
+      console.log("Skipping fetch - waiting for category to be set");
+      return;
+    }
+
+    // Add a small delay to avoid rapid consecutive calls
+    const timeoutId = setTimeout(() => {
+      const filters = {};
+      if (searchQuery) {
+        filters.search = searchQuery;
+        setSearchTerm(searchQuery);
+      }
+      if (selectedCategory) filters.category = selectedCategory;
+      if (priceRange.min) filters.minPrice = priceRange.min;
+      if (priceRange.max) filters.maxPrice = priceRange.max;
+      if (sortBy) filters.sortBy = sortBy;
+      if (sortOrder) filters.order = sortOrder;
+
+      console.log("=== Products Fetch Effect ===");
+      console.log("Filters being applied:", filters);
+      console.log("Selected category state:", selectedCategory);
+
+      dispatch(getProducts(filters));
+    }, 100); // Small delay to debounce rapid changes
 
     return () => {
-      dispatch(reset());
+      clearTimeout(timeoutId);
     };
-  }, [dispatch, searchQuery, selectedCategory, priceRange, sortBy, sortOrder]);
+  }, [
+    dispatch,
+    searchQuery,
+    selectedCategory,
+    priceRange,
+    sortBy,
+    sortOrder,
+    categoryFromUrl,
+  ]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -233,15 +273,46 @@ const Products = () => {
 
           {/* Results Summary */}
           <div className="mt-4 pt-4 border-t border-gray-200">
-            <p className="text-sm text-gray-600">
-              {searchQuery && (
-                <>
-                  Search results for:{" "}
-                  <span className="font-semibold">"{searchQuery}"</span> •
-                </>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <p className="text-sm text-gray-600">
+                {searchQuery && (
+                  <>
+                    Search results for:{" "}
+                    <span className="font-semibold">"{searchQuery}"</span>
+                    {selectedCategory && (
+                      <>
+                        {" "}
+                        in{" "}
+                        <span className="font-semibold">
+                          {selectedCategory}
+                        </span>
+                      </>
+                    )}{" "}
+                    •{" "}
+                  </>
+                )}
+                {selectedCategory && !searchQuery && (
+                  <>
+                    Showing{" "}
+                    <span className="font-semibold">{selectedCategory}</span>{" "}
+                    products •{" "}
+                  </>
+                )}
+                <span className="font-semibold">{pagination?.total || 0}</span>{" "}
+                products found
+              </p>
+              {(selectedCategory ||
+                searchQuery ||
+                priceRange.min ||
+                priceRange.max) && (
+                <button
+                  onClick={clearFilters}
+                  className="text-sm text-gray-500 hover:text-black underline"
+                >
+                  Clear all filters
+                </button>
               )}
-              {pagination?.total || 0} products found
-            </p>
+            </div>
           </div>
         </div>
 
@@ -252,14 +323,47 @@ const Products = () => {
             <p className="text-gray-600">Loading products...</p>
           </div>
         ) : products?.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-600 text-lg">No products found.</p>
-            <button
-              onClick={clearFilters}
-              className="mt-4 text-black hover:underline"
-            >
-              Clear filters to see all products
-            </button>
+          <div className="text-center py-16 bg-white rounded-lg border border-gray-200">
+            <div className="max-w-md mx-auto">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Search className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                {selectedCategory
+                  ? `No ${selectedCategory} Products Found`
+                  : "No Products Found"}
+              </h3>
+              <p className="text-gray-600 mb-6">
+                {selectedCategory
+                  ? categories.some(
+                      (cat) =>
+                        cat.toLowerCase() === selectedCategory.toLowerCase()
+                    )
+                    ? `We don't have any products in the ${selectedCategory} category at the moment.`
+                    : `The category "${selectedCategory}" doesn't exist. Available categories: ${categories.join(
+                        ", "
+                      )}.`
+                  : searchQuery
+                  ? `No products match your search for "${searchQuery}".`
+                  : "No products match your current filters."}
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                {selectedCategory && (
+                  <button
+                    onClick={() => setSelectedCategory("")}
+                    className="px-6 py-3 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition"
+                  >
+                    View All Categories
+                  </button>
+                )}
+                <button
+                  onClick={clearFilters}
+                  className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:border-black hover:text-black transition"
+                >
+                  Clear All Filters
+                </button>
+              </div>
+            </div>
           </div>
         ) : (
           <div
@@ -290,7 +394,7 @@ const ProductCard = ({ product, viewMode, formatPrice }) => {
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 flex gap-4 hover:shadow-md transition">
         {/* Product Image */}
-        <div className="flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden">
+        <div className="shrink-0 w-24 h-24 rounded-lg overflow-hidden">
           <img
             src={product.image || "/api/placeholder/400/400"}
             alt={product.name}
@@ -359,13 +463,22 @@ const ProductCard = ({ product, viewMode, formatPrice }) => {
               </div>
             </div>
 
-            <button
-              disabled={product.inStock === 0}
-              className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg font-medium hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-400 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <ShoppingCart size={16} />
-              Add to Cart
-            </button>
+            <div className="flex items-center gap-2">
+              <Link
+                to={`/products/${product._id}`}
+                className="flex items-center gap-2 px-3 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:border-black hover:text-black focus:outline-none focus:ring-2 focus:ring-gray-400 transition"
+              >
+                <Eye size={16} />
+                View Details
+              </Link>
+              <button
+                disabled={product.inStock === 0}
+                className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg font-medium hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-400 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ShoppingCart size={16} />
+                Add to Cart
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -375,20 +488,25 @@ const ProductCard = ({ product, viewMode, formatPrice }) => {
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition group">
       {/* Product Image */}
-      <div className="aspect-square overflow-hidden">
+      <Link
+        to={`/products/${product._id}`}
+        className="block aspect-square overflow-hidden"
+      >
         <img
           src={product.image || "/api/placeholder/400/400"}
           alt={product.name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
-      </div>
+      </Link>
 
       {/* Product Info */}
       <div className="p-4">
         <div className="flex items-start justify-between mb-2">
-          <h3 className="font-bold text-lg text-gray-900 group-hover:text-black transition">
-            {product.name}
-          </h3>
+          <Link to={`/products/${product._id}`}>
+            <h3 className="font-bold text-lg text-gray-900 group-hover:text-black transition hover:text-black cursor-pointer">
+              {product.name}
+            </h3>
+          </Link>
           {product.discount > 0 && (
             <span className="bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded-full">
               -{product.discount}%
@@ -413,38 +531,46 @@ const ProductCard = ({ product, viewMode, formatPrice }) => {
           )}
         </div>
 
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              {product.discount > 0 ? (
-                <>
-                  <span className="text-lg font-bold text-gray-900">
-                    {formatPrice(product.price * (1 - product.discount / 100))}
-                  </span>
-                  <span className="text-sm text-gray-500 line-through">
-                    {formatPrice(product.price)}
-                  </span>
-                </>
-              ) : (
+        <div className="mb-4">
+          <div className="flex items-center gap-2 mb-2">
+            {product.discount > 0 ? (
+              <>
                 <span className="text-lg font-bold text-gray-900">
+                  {formatPrice(product.price * (1 - product.discount / 100))}
+                </span>
+                <span className="text-sm text-gray-500 line-through">
                   {formatPrice(product.price)}
                 </span>
-              )}
-            </div>
-            <div className="flex items-center gap-1 mt-1">
-              <Star size={14} className="text-yellow-400 fill-current" />
-              <span className="text-sm text-gray-600">
-                {product.rating || "4.5"} (
-                {product.reviewCount || Math.floor(Math.random() * 100)})
+              </>
+            ) : (
+              <span className="text-lg font-bold text-gray-900">
+                {formatPrice(product.price)}
               </span>
-            </div>
+            )}
           </div>
+          <div className="flex items-center gap-1">
+            <Star size={14} className="text-yellow-400 fill-current" />
+            <span className="text-sm text-gray-600">
+              {product.rating || "4.5"} (
+              {product.reviewCount || Math.floor(Math.random() * 100)})
+            </span>
+          </div>
+        </div>
 
+        <div className="flex flex-col gap-2">
+          <Link
+            to={`/products/${product._id}`}
+            className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:border-black hover:text-black focus:outline-none focus:ring-2 focus:ring-gray-400 transition"
+          >
+            <Eye size={16} />
+            View Details
+          </Link>
           <button
             disabled={product.inStock === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg font-medium hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-400 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-black text-white rounded-lg font-medium hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-400 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <ShoppingCart size={16} />
+            Add to Cart
           </button>
         </div>
       </div>

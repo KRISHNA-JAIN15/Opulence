@@ -59,14 +59,14 @@ const AdminHeader = () => {
                 Add Product
               </Link>
               <Link
-                to="#"
+                to="/admin/inventory"
                 className="flex items-center gap-2 text-gray-700 text-sm font-bold hover:text-blue-600 transition uppercase tracking-wider"
               >
                 <Package size={18} />
                 Inventory
               </Link>
               <Link
-                to="#"
+                to="/admin/users"
                 className="flex items-center gap-2 text-gray-700 text-sm font-bold hover:text-blue-600 transition uppercase tracking-wider"
               >
                 <Users size={18} />

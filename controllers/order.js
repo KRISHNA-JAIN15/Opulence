@@ -535,3 +535,128 @@ exports.getOrderStats = async (req, res) => {
     });
   }
 };
+
+// Get Sales Statistics for Inventory (Admin)
+exports.getSalesStats = async (req, res) => {
+  try {
+    const now = new Date();
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Today's stats
+    const todayOrders = await Order.countDocuments({
+      createdAt: { $gte: startOfToday },
+      orderStatus: { $ne: "cancelled" },
+    });
+
+    const todayRevenueResult = await Order.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startOfToday },
+          "payment.status": "completed",
+          orderStatus: { $ne: "cancelled" },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$pricing.total" },
+        },
+      },
+    ]);
+    const todayRevenue = todayRevenueResult[0]?.total || 0;
+
+    // This month's stats
+    const monthOrders = await Order.countDocuments({
+      createdAt: { $gte: startOfMonth },
+      orderStatus: { $ne: "cancelled" },
+    });
+
+    const monthRevenueResult = await Order.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startOfMonth },
+          "payment.status": "completed",
+          orderStatus: { $ne: "cancelled" },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$pricing.total" },
+        },
+      },
+    ]);
+    const monthRevenue = monthRevenueResult[0]?.total || 0;
+
+    // Top selling products
+    const topProductsResult = await Order.aggregate([
+      {
+        $match: {
+          orderStatus: { $ne: "cancelled" },
+        },
+      },
+      { $unwind: "$items" },
+      {
+        $group: {
+          _id: "$items.product",
+          name: { $first: "$items.name" },
+          sold: { $sum: "$items.quantity" },
+          revenue: { $sum: { $multiply: ["$items.price", "$items.quantity"] } },
+        },
+      },
+      { $sort: { sold: -1 } },
+      { $limit: 10 },
+    ]);
+
+    // Sales by category
+    const Product = require("../models/product");
+    const categoryStats = await Order.aggregate([
+      {
+        $match: {
+          orderStatus: { $ne: "cancelled" },
+        },
+      },
+      { $unwind: "$items" },
+      {
+        $lookup: {
+          from: "products",
+          localField: "items.product",
+          foreignField: "_id",
+          as: "productInfo",
+        },
+      },
+      { $unwind: { path: "$productInfo", preserveNullAndEmptyArrays: true } },
+      {
+        $group: {
+          _id: "$productInfo.category",
+          sold: { $sum: "$items.quantity" },
+          revenue: { $sum: { $multiply: ["$items.price", "$items.quantity"] } },
+        },
+      },
+      { $sort: { revenue: -1 } },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      stats: {
+        todayOrders,
+        todayRevenue,
+        monthOrders,
+        monthRevenue,
+      },
+      topProducts: topProductsResult,
+      categoryStats: categoryStats.filter((c) => c._id),
+    });
+  } catch (error) {
+    console.error("Error getting sales stats:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get sales statistics",
+    });
+  }
+};

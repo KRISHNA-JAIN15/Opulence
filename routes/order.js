@@ -12,6 +12,7 @@ const {
   getAllOrders,
   updateOrderStatus,
   getOrderStats,
+  getSalesStats,
 } = require("../controllers/order");
 
 // Payment routes
@@ -34,5 +35,6 @@ router.put(
   updateOrderStatus
 );
 router.get("/admin/stats", authenticateToken, adminOnly, getOrderStats);
+router.get("/admin/sales-stats", authenticateToken, adminOnly, getSalesStats);
 
 module.exports = router;

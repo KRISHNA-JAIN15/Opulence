@@ -111,6 +111,10 @@ const wishlistSlice = createSlice({
       state.isError = false;
       state.message = "";
     },
+    // Silent update for background price sync - updates wishlist items without loading states
+    updateWishlistItemsSilently: (state, action) => {
+      state.wishlistItems = action.payload;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -178,5 +182,9 @@ const wishlistSlice = createSlice({
   },
 });
 
-export const { resetWishlist, clearWishlistState } = wishlistSlice.actions;
+export const {
+  resetWishlist,
+  clearWishlistState,
+  updateWishlistItemsSilently,
+} = wishlistSlice.actions;
 export default wishlistSlice.reducer;

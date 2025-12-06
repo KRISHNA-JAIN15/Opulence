@@ -253,6 +253,19 @@ const cartSlice = createSlice({
         saveCartToLocalStorage(state.cartItems);
       }
     },
+
+    // Silent update for background price sync - updates all cart items at once
+    updateCartItemsSilently: (state, action) => {
+      state.cartItems = action.payload;
+
+      // Calculate new totals
+      const totals = calculateCartTotals(state.cartItems);
+      state.cartTotal = totals.cartTotal;
+      state.cartQuantity = totals.cartQuantity;
+
+      // Save to localStorage
+      saveCartToLocalStorage(state.cartItems);
+    },
   },
 
   // Handle async thunk for syncing cart prices
@@ -280,6 +293,7 @@ export const {
   incrementQuantity,
   decrementQuantity,
   updateCartItem,
+  updateCartItemsSilently,
 } = cartSlice.actions;
 
 export default cartSlice.reducer;

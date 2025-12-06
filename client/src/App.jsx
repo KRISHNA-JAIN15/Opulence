@@ -10,6 +10,7 @@ import { useEffect } from "react";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import AdminLayout from "./components/AdminLayout";
+import { ToastProvider, useToast } from "./components/Toast";
 import Home from "./pages/Home";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
@@ -28,10 +29,13 @@ import Orders from "./pages/Orders";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AddProduct from "./pages/admin/AddProduct";
 import EditProduct from "./pages/admin/EditProduct";
+import AdminUsers from "./pages/admin/Users";
+import AdminInventory from "./pages/admin/Inventory";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ScrollToTop from "./components/ScrollToTop";
 import PageLoader from "./components/PageLoader";
 import usePageLoading from "./hooks/usePageLoading";
+import usePriceSync from "./hooks/usePriceSync";
 import { initializeCartTotals } from "./store/cartSlice";
 import { getWishlist } from "./store/wishlistSlice";
 
@@ -41,6 +45,10 @@ function AppContent() {
   const isLoading = usePageLoading(300);
   const dispatch = useDispatch();
   const { token } = useSelector((state) => state.auth);
+  const toast = useToast();
+
+  // Background price sync - updates prices, stock, discounts every 3 seconds
+  usePriceSync(toast);
 
   // Initialize cart totals on app start
   useEffect(() => {
@@ -104,6 +112,22 @@ function AppContent() {
               </AdminLayout>
             }
           />
+          <Route
+            path="/admin/users"
+            element={
+              <AdminLayout>
+                <AdminUsers />
+              </AdminLayout>
+            }
+          />
+          <Route
+            path="/admin/inventory"
+            element={
+              <AdminLayout>
+                <AdminInventory />
+              </AdminLayout>
+            }
+          />
 
           {/* Add more routes as needed */}
         </Routes>
@@ -117,7 +141,9 @@ function App() {
   return (
     <Provider store={store}>
       <Router>
-        <AppContent />
+        <ToastProvider>
+          <AppContent />
+        </ToastProvider>
       </Router>
     </Provider>
   );

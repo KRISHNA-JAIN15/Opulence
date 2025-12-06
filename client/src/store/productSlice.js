@@ -183,6 +183,24 @@ export const productSlice = createSlice({
       state.isError = false;
       state.message = "";
     },
+    // Silent update for background price sync - doesn't trigger loading states
+    updateProductsSilently: (state, action) => {
+      const { products, currentProduct, featuredProducts, discountedProducts } =
+        action.payload;
+
+      if (products) {
+        state.products = products;
+      }
+      if (currentProduct) {
+        state.currentProduct = currentProduct;
+      }
+      if (featuredProducts) {
+        state.featuredProducts = featuredProducts;
+      }
+      if (discountedProducts) {
+        state.discountedProducts = discountedProducts;
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -325,5 +343,5 @@ export const productSlice = createSlice({
   },
 });
 
-export const { reset } = productSlice.actions;
+export const { reset, updateProductsSilently } = productSlice.actions;
 export default productSlice.reducer;

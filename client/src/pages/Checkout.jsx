@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import {
@@ -11,7 +11,7 @@ import {
   Mail,
   Phone,
 } from "lucide-react";
-import { clearCart } from "../store/cartSlice";
+import { clearCart, syncCartPrices } from "../store/cartSlice";
 import { getProfile } from "../store/profileSlice";
 
 const Checkout = () => {
@@ -55,6 +55,15 @@ const Checkout = () => {
   const [errors, setErrors] = useState({});
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
+  const hasSynced = useRef(false);
+
+  // Sync cart prices with latest product data when component mounts
+  useEffect(() => {
+    if (cartItems.length > 0 && !hasSynced.current) {
+      dispatch(syncCartPrices());
+      hasSynced.current = true;
+    }
+  }, [dispatch, cartItems.length]);
 
   // Load profile data on mount
   useEffect(() => {

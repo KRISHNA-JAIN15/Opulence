@@ -517,6 +517,38 @@ const getRelatedProducts = async (req, res) => {
   }
 };
 
+// @desc    Get products by IDs (batch)
+// @route   POST /api/products/batch
+// @access  Public
+const getProductsByIds = async (req, res) => {
+  try {
+    const { productIds } = req.body;
+
+    if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Product IDs array is required",
+      });
+    }
+
+    const products = await Product.find({
+      _id: { $in: productIds },
+      isActive: true,
+    }).select("-__v");
+
+    res.status(200).json({
+      success: true,
+      products,
+    });
+  } catch (error) {
+    console.error("Get products by IDs error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch products",
+    });
+  }
+};
+
 module.exports = {
   getAllProducts,
   getProductById,
@@ -528,4 +560,5 @@ module.exports = {
   getFeaturedProducts,
   getDiscountedProducts,
   getRelatedProducts,
+  getProductsByIds,
 };

@@ -10,6 +10,7 @@ const {
   getFeaturedProducts,
   getDiscountedProducts,
   getRelatedProducts,
+  getProductsByIds,
 } = require("../controllers/product");
 const { authenticateToken, adminOnly } = require("../middlewares/auth/auth");
 const { upload } = require("../utils/cloudinary");
@@ -21,6 +22,7 @@ router.get("/", getAllProducts);
 router.get("/categories/all", getCategories);
 router.get("/featured", getFeaturedProducts);
 router.get("/discounted", getDiscountedProducts);
+router.post("/batch", getProductsByIds); // Batch fetch products by IDs
 router.get("/:id/related", getRelatedProducts);
 router.get("/:id", getProductById);
 

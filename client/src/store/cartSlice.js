@@ -1,4 +1,7 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import axios from "axios";
+
+const API_URL = "http://localhost:3000/api";
 
 // Get cart from localStorage
 const getCartFromLocalStorage = () => {
@@ -41,6 +44,50 @@ const calculateCartTotals = (cartItems) => {
 
   return { cartTotal: parseFloat(cartTotal.toFixed(2)), cartQuantity };
 };
+
+// Async thunk to sync cart with latest product data
+export const syncCartPrices = createAsyncThunk(
+  "cart/syncCartPrices",
+  async (_, { getState, rejectWithValue }) => {
+    try {
+      const { cart } = getState();
+      const productIds = cart.cartItems.map((item) => item._id);
+
+      if (productIds.length === 0) {
+        return [];
+      }
+
+      // Fetch latest product data for all items in cart
+      const response = await axios.post(`${API_URL}/products/batch`, {
+        productIds,
+      });
+
+      const updatedProducts = response.data.products;
+
+      // Update cart items with latest prices while preserving quantities
+      const updatedCartItems = cart.cartItems.map((cartItem) => {
+        const latestProduct = updatedProducts.find(
+          (p) => p._id === cartItem._id
+        );
+
+        if (latestProduct) {
+          // Update product data but keep the quantity from cart
+          return {
+            ...latestProduct,
+            quantity: Math.min(cartItem.quantity, latestProduct.inStock),
+          };
+        }
+
+        return cartItem; // Keep original if product not found
+      });
+
+      return updatedCartItems;
+    } catch (error) {
+      console.error("Error syncing cart prices:", error);
+      return rejectWithValue("Failed to sync cart prices");
+    }
+  }
+);
 
 const cartSlice = createSlice({
   name: "cart",
@@ -181,6 +228,43 @@ const cartSlice = createSlice({
         saveCartToLocalStorage(state.cartItems);
       }
     },
+
+    // Update cart item with latest product data (for manual updates)
+    updateCartItem: (state, action) => {
+      const updatedProduct = action.payload;
+      const existingItem = state.cartItems.find(
+        (item) => item._id === updatedProduct._id
+      );
+
+      if (existingItem) {
+        // Update product data but preserve quantity
+        const quantity = Math.min(existingItem.quantity, updatedProduct.inStock);
+        Object.assign(existingItem, { ...updatedProduct, quantity });
+
+        // Calculate new totals
+        const totals = calculateCartTotals(state.cartItems);
+        state.cartTotal = totals.cartTotal;
+        state.cartQuantity = totals.cartQuantity;
+
+        // Save to localStorage
+        saveCartToLocalStorage(state.cartItems);
+      }
+    },
+  },
+
+  // Handle async thunk for syncing cart prices
+  extraReducers: (builder) => {
+    builder.addCase(syncCartPrices.fulfilled, (state, action) => {
+      state.cartItems = action.payload;
+
+      // Calculate new totals
+      const totals = calculateCartTotals(state.cartItems);
+      state.cartTotal = totals.cartTotal;
+      state.cartQuantity = totals.cartQuantity;
+
+      // Save to localStorage
+      saveCartToLocalStorage(state.cartItems);
+    });
   },
 });
 
@@ -192,6 +276,7 @@ export const {
   initializeCartTotals,
   incrementQuantity,
   decrementQuantity,
+  updateCartItem,
 } = cartSlice.actions;
 
 export default cartSlice.reducer;

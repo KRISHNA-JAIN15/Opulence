@@ -6,6 +6,7 @@ import {
   decrementQuantity,
   updateCartQuantity,
   clearCart,
+  syncCartPrices,
 } from "../store/cartSlice";
 import {
   Trash2,
@@ -15,7 +16,7 @@ import {
   ArrowLeft,
   CreditCard,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const Cart = () => {
   const dispatch = useDispatch();
@@ -24,6 +25,15 @@ const Cart = () => {
     (state) => state.cart
   );
   const [updatingItems, setUpdatingItems] = useState({});
+  const hasSynced = useRef(false);
+
+  // Sync cart prices with latest product data when component mounts
+  useEffect(() => {
+    if (cartItems.length > 0 && !hasSynced.current) {
+      dispatch(syncCartPrices());
+      hasSynced.current = true;
+    }
+  }, [dispatch, cartItems.length]);
 
   const handleQuantityChange = (productId, newQuantity, maxStock) => {
     if (newQuantity <= 0) {

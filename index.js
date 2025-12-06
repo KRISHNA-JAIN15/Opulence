@@ -8,6 +8,7 @@ const userRoutes = require("./routes/user");
 const productRoutes = require("./routes/product");
 const reviewRoutes = require("./routes/review");
 const profileRoutes = require("./routes/profile");
+const wishlistRoutes = require("./routes/wishlist");
 
 dotenv.config();
 
@@ -49,6 +50,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/wishlist", wishlistRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

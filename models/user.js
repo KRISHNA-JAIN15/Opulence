@@ -39,6 +39,12 @@ const userSchema = new Schema(
     passwordResetExpires: {
       type: Date,
     },
+    wishlist: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Product",
+      },
+    ],
   },
   { timestamps: true }
 );

@@ -20,6 +20,11 @@ import {
 } from "lucide-react";
 import { getProduct, getRelatedProducts } from "../store/productSlice";
 import { addToCart } from "../store/cartSlice";
+import {
+  addToWishlist,
+  removeFromWishlist,
+  getWishlist,
+} from "../store/wishlistSlice";
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -27,11 +32,12 @@ const ProductDetail = () => {
   const { currentProduct, relatedProducts, isLoading, isError } = useSelector(
     (state) => state.products
   );
+  const { wishlistItems } = useSelector((state) => state.wishlist);
+  const { token } = useSelector((state) => state.auth);
 
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState("description");
-  const [isWishlisted, setIsWishlisted] = useState(false);
   const [newReview, setNewReview] = useState({
     rating: 5,
     title: "",
@@ -81,7 +87,26 @@ const ProductDetail = () => {
       // Also fetch related products
       dispatch(getRelatedProducts(id));
     }
-  }, [dispatch, id]);
+    // Get wishlist if user is logged in
+    if (token) {
+      dispatch(getWishlist());
+    }
+  }, [dispatch, id, token]);
+
+  const isInWishlist = wishlistItems?.some((item) => item._id === id);
+
+  const handleWishlistToggle = () => {
+    if (!token) {
+      alert("Please login to add items to wishlist");
+      return;
+    }
+    
+    if (isInWishlist) {
+      dispatch(removeFromWishlist(id));
+    } else {
+      dispatch(addToWishlist(id));
+    }
+  };
 
   const handleQuantityChange = (action) => {
     if (action === "increase" && quantity < (currentProduct?.inStock || 0)) {
@@ -206,13 +231,14 @@ const ProductDetail = () => {
                 </div>
               )}
               <button
-                onClick={() => setIsWishlisted(!isWishlisted)}
+                onClick={handleWishlistToggle}
                 className="absolute top-4 right-4 p-2 bg-white rounded-full shadow-lg hover:bg-gray-50 transition"
+                title={isInWishlist ? "Remove from wishlist" : "Add to wishlist"}
               >
                 <Heart
                   size={20}
                   className={
-                    isWishlisted ? "text-red-500 fill-current" : "text-gray-600"
+                    isInWishlist ? "text-red-500 fill-current" : "text-gray-600"
                   }
                 />
               </button>

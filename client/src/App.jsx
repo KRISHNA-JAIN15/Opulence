@@ -4,7 +4,7 @@ import {
   Route,
   useLocation,
 } from "react-router-dom";
-import { Provider, useDispatch } from "react-redux";
+import { Provider, useDispatch, useSelector } from "react-redux";
 import { store } from "./store/store";
 import { useEffect } from "react";
 import Header from "./components/Header";
@@ -22,6 +22,7 @@ import Categories from "./pages/Categories";
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import Profile from "./pages/Profile";
+import Wishlist from "./pages/Wishlist";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AddProduct from "./pages/admin/AddProduct";
 import EditProduct from "./pages/admin/EditProduct";
@@ -30,17 +31,26 @@ import ScrollToTop from "./components/ScrollToTop";
 import PageLoader from "./components/PageLoader";
 import usePageLoading from "./hooks/usePageLoading";
 import { initializeCartTotals } from "./store/cartSlice";
+import { getWishlist } from "./store/wishlistSlice";
 
 function AppContent() {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith("/admin");
   const isLoading = usePageLoading(300);
   const dispatch = useDispatch();
+  const { token } = useSelector((state) => state.auth);
 
   // Initialize cart totals on app start
   useEffect(() => {
     dispatch(initializeCartTotals());
   }, [dispatch]);
+
+  // Load wishlist if user is logged in
+  useEffect(() => {
+    if (token) {
+      dispatch(getWishlist());
+    }
+  }, [dispatch, token]);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -56,6 +66,7 @@ function AppContent() {
           <Route path="/products" element={<Products />} />
           <Route path="/products/:id" element={<ProductDetail />} />
           <Route path="/cart" element={<Cart />} />
+          <Route path="/wishlist" element={<Wishlist />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/login" element={<Login />} />

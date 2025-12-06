@@ -23,6 +23,11 @@ const Checkout = () => {
   const { profile } = useSelector((state) => state.profile);
   const { user } = useSelector((state) => state.auth);
 
+  const [selectedAddressId, setSelectedAddressId] = useState(null);
+  const [selectedPaymentId, setSelectedPaymentId] = useState(null);
+  const [useNewAddress, setUseNewAddress] = useState(false);
+  const [useNewPayment, setUseNewPayment] = useState(false);
+
   const [formData, setFormData] = useState({
     // Shipping Information
     firstName: "",
@@ -78,43 +83,36 @@ const Checkout = () => {
       const defaultAddress = profile.addresses?.find((addr) => addr.isDefault);
       const defaultPayment = profile.paymentMethods?.find((pm) => pm.isDefault);
 
-      if (defaultAddress && !formData.firstName) {
-        setFormData((prev) => ({
-          ...prev,
-          firstName: defaultAddress.firstName,
-          lastName: defaultAddress.lastName,
-          address: defaultAddress.address,
-          apartment: defaultAddress.apartment || "",
-          city: defaultAddress.city,
-          state: defaultAddress.state,
-          zipCode: defaultAddress.zipCode,
-          country: defaultAddress.country,
-        }));
+      // Set selected address
+      if (defaultAddress && !selectedAddressId) {
+        setSelectedAddressId(defaultAddress._id);
       }
 
-      if (defaultPayment && !formData.cardholderName) {
-        setFormData((prev) => ({
-          ...prev,
-          cardholderName: defaultPayment.cardholderName,
-        }));
+      // Set selected payment
+      if (defaultPayment && !selectedPaymentId) {
+        setSelectedPaymentId(defaultPayment._id);
       }
 
       // Pre-populate email and phone from profile
       if (profile.personalInfo && !formData.email) {
         setFormData((prev) => ({
           ...prev,
-          email: user.email || "",
+          email: user?.email || "",
           phone: profile.personalInfo.phone || "",
         }));
       }
+
+      // If no saved addresses, enable new address form
+      if (!profile.addresses || profile.addresses.length === 0) {
+        setUseNewAddress(true);
+      }
+
+      // If no saved payment methods, enable new payment form
+      if (!profile.paymentMethods || profile.paymentMethods.length === 0) {
+        setUseNewPayment(true);
+      }
     }
-  }, [
-    profile,
-    formData.firstName,
-    formData.cardholderName,
-    formData.email,
-    user,
-  ]);
+  }, [profile, selectedAddressId, selectedPaymentId, formData.email, user]);
 
   // Redirect to cart if empty
   if (cartItems.length === 0 && !orderComplete) {
@@ -147,60 +145,87 @@ const Checkout = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    // Required fields
-    const requiredFields = [
-      "firstName",
-      "lastName",
-      "email",
-      "phone",
-      "address",
-      "city",
-      "state",
-      "zipCode",
-      "cardNumber",
-      "expiryDate",
-      "cvv",
-      "cardholderName",
-    ];
-
-    requiredFields.forEach((field) => {
-      if (!formData[field].trim()) {
-        newErrors[field] = "This field is required";
+    // Email and phone are always required
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required";
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        newErrors.email = "Please enter a valid email address";
       }
-    });
-
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (formData.email && !emailRegex.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
     }
 
-    // Phone validation
-    const phoneRegex = /^\d{10,}$/;
-    if (formData.phone && !phoneRegex.test(formData.phone.replace(/\D/g, ""))) {
-      newErrors.phone = "Please enter a valid phone number";
+    if (!formData.phone.trim()) {
+      newErrors.phone = "Phone is required";
+    } else {
+      const phoneRegex = /^\d{10,}$/;
+      if (!phoneRegex.test(formData.phone.replace(/\D/g, ""))) {
+        newErrors.phone = "Please enter a valid phone number";
+      }
     }
 
-    // Card validation (basic)
-    if (
-      formData.cardNumber &&
-      formData.cardNumber.replace(/\D/g, "").length < 16
-    ) {
-      newErrors.cardNumber = "Please enter a valid card number";
+    // Validate address - either selected or new
+    if (!selectedAddressId && !useNewAddress) {
+      newErrors.address = "Please select an address or add a new one";
     }
 
-    // CVV validation
-    if (formData.cvv && formData.cvv.length < 3) {
-      newErrors.cvv = "Please enter a valid CVV";
+    if (useNewAddress) {
+      const requiredAddressFields = [
+        "firstName",
+        "lastName",
+        "address",
+        "city",
+        "state",
+        "zipCode",
+      ];
+
+      requiredAddressFields.forEach((field) => {
+        if (!formData[field].trim()) {
+          newErrors[field] = "This field is required";
+        }
+      });
     }
 
-    // Expiry date validation
-    if (formData.expiryDate) {
-      const [month, year] = formData.expiryDate.split("/");
-      const now = new Date();
-      const expiry = new Date(2000 + parseInt(year), parseInt(month) - 1);
-      if (expiry < now) {
-        newErrors.expiryDate = "Card has expired";
+    // Validate payment - either selected or new
+    if (!selectedPaymentId && !useNewPayment) {
+      newErrors.payment = "Please select a payment method or add a new one";
+    }
+
+    if (useNewPayment) {
+      const requiredPaymentFields = [
+        "cardNumber",
+        "expiryDate",
+        "cvv",
+        "cardholderName",
+      ];
+
+      requiredPaymentFields.forEach((field) => {
+        if (!formData[field].trim()) {
+          newErrors[field] = "This field is required";
+        }
+      });
+
+      // Card validation (basic)
+      if (
+        formData.cardNumber &&
+        formData.cardNumber.replace(/\D/g, "").length < 16
+      ) {
+        newErrors.cardNumber = "Please enter a valid card number";
+      }
+
+      // CVV validation
+      if (formData.cvv && formData.cvv.length < 3) {
+        newErrors.cvv = "Please enter a valid CVV";
+      }
+
+      // Expiry date validation
+      if (formData.expiryDate) {
+        const [month, year] = formData.expiryDate.split("/");
+        const now = new Date();
+        const expiry = new Date(2000 + parseInt(year), parseInt(month) - 1);
+        if (expiry < now) {
+          newErrors.expiryDate = "Card has expired";
+        }
       }
     }
 
@@ -218,7 +243,55 @@ const Checkout = () => {
     setIsProcessing(true);
 
     try {
-      // Simulate API call
+      // Prepare order data
+      const selectedAddress = selectedAddressId
+        ? profile.addresses.find((addr) => addr._id === selectedAddressId)
+        : null;
+
+      const selectedPayment = selectedPaymentId
+        ? profile.paymentMethods.find((pm) => pm._id === selectedPaymentId)
+        : null;
+
+      const orderData = {
+        items: cartItems.map((item) => ({
+          productId: item._id,
+          name: item.name,
+          price:
+            item.discount > 0
+              ? item.price * (1 - item.discount / 100)
+              : item.price,
+          quantity: item.quantity,
+          image: item.image || item.images?.[0]?.url,
+        })),
+        shippingAddress: selectedAddress || {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          zipCode: formData.zipCode,
+          country: formData.country,
+        },
+        paymentMethod: selectedPayment
+          ? {
+              type: selectedPayment.type,
+              lastFourDigits: selectedPayment.lastFourDigits,
+            }
+          : {
+              type: "credit_card",
+              lastFourDigits: formData.cardNumber.slice(-4),
+            },
+        email: formData.email,
+        phone: formData.phone,
+        subtotal,
+        tax,
+        shipping,
+        total,
+        orderNotes: formData.orderNotes,
+      };
+
+      // Simulate API call - Replace with actual payment processing
+      console.log("Order Data:", orderData);
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Clear cart and show success
@@ -304,197 +377,275 @@ const Checkout = () => {
               {/* Shipping Information */}
               <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div className="px-6 py-4 border-b border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                      <MapPin size={20} />
-                      Shipping Information
-                    </h2>
-                    {profile?.addresses?.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const defaultAddr = profile.addresses.find(
-                            (addr) => addr.isDefault
-                          );
-                          if (defaultAddr) {
-                            setFormData((prev) => ({
-                              ...prev,
-                              firstName: defaultAddr.firstName,
-                              lastName: defaultAddr.lastName,
-                              address: defaultAddr.address,
-                              apartment: defaultAddr.apartment || "",
-                              city: defaultAddr.city,
-                              state: defaultAddr.state,
-                              zipCode: defaultAddr.zipCode,
-                              country: defaultAddr.country,
-                            }));
-                          }
-                        }}
-                        className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                      >
-                        Use Saved Address
-                      </button>
-                    )}
-                  </div>
+                  <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <MapPin size={20} />
+                    Shipping Information
+                  </h2>
                 </div>
-                <div className="px-6 py-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      First Name *
-                    </label>
-                    <input
-                      type="text"
-                      name="firstName"
-                      value={formData.firstName}
-                      onChange={handleInputChange}
-                      className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent ${
-                        errors.firstName ? "border-red-500" : "border-gray-300"
-                      }`}
-                    />
-                    {errors.firstName && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {errors.firstName}
-                      </p>
-                    )}
+                <div className="px-6 py-6 space-y-6">
+                  {/* Email and Phone - Always shown */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Email *
+                      </label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent ${
+                          errors.email ? "border-red-500" : "border-gray-300"
+                        }`}
+                      />
+                      {errors.email && (
+                        <p className="text-red-500 text-sm mt-1">
+                          {errors.email}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Phone *
+                      </label>
+                      <input
+                        type="tel"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                        className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent ${
+                          errors.phone ? "border-red-500" : "border-gray-300"
+                        }`}
+                      />
+                      {errors.phone && (
+                        <p className="text-red-500 text-sm mt-1">
+                          {errors.phone}
+                        </p>
+                      )}
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Last Name *
-                    </label>
-                    <input
-                      type="text"
-                      name="lastName"
-                      value={formData.lastName}
-                      onChange={handleInputChange}
-                      className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent ${
-                        errors.lastName ? "border-red-500" : "border-gray-300"
-                      }`}
-                    />
-                    {errors.lastName && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {errors.lastName}
-                      </p>
-                    )}
-                  </div>
+                  {/* Saved Addresses */}
+                  {profile?.addresses && profile.addresses.length > 0 && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-3">
+                        Select Shipping Address
+                      </label>
+                      <div className="space-y-3">
+                        {profile.addresses.map((addr) => (
+                          <div
+                            key={addr._id}
+                            onClick={() => {
+                              setSelectedAddressId(addr._id);
+                              setUseNewAddress(false);
+                            }}
+                            className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                              selectedAddressId === addr._id
+                                ? "border-black bg-gray-50"
+                                : "border-gray-200 hover:border-gray-300"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="radio"
+                                    name="selectedAddress"
+                                    checked={selectedAddressId === addr._id}
+                                    onChange={() => {}}
+                                    className="w-4 h-4 text-black focus:ring-black"
+                                  />
+                                  <p className="font-medium text-gray-900">
+                                    {addr.firstName} {addr.lastName}
+                                  </p>
+                                  {addr.isDefault && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                      Default
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-sm text-gray-600 mt-1 ml-6">
+                                  {addr.address}
+                                  {addr.apartment && `, ${addr.apartment}`}
+                                  <br />
+                                  {addr.city}, {addr.state} {addr.zipCode}
+                                  <br />
+                                  {addr.country}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email *
-                    </label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent ${
-                        errors.email ? "border-red-500" : "border-gray-300"
-                      }`}
-                    />
-                    {errors.email && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {errors.email}
-                      </p>
-                    )}
-                  </div>
+                        {/* Add New Address Option */}
+                        <div
+                          onClick={() => {
+                            setUseNewAddress(true);
+                            setSelectedAddressId(null);
+                          }}
+                          className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                            useNewAddress
+                              ? "border-black bg-gray-50"
+                              : "border-gray-200 hover:border-gray-300"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="radio"
+                              name="selectedAddress"
+                              checked={useNewAddress}
+                              onChange={() => {}}
+                              className="w-4 h-4 text-black focus:ring-black"
+                            />
+                            <p className="font-medium text-gray-900">
+                              Add New Address
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      {errors.address && !useNewAddress && (
+                        <p className="text-red-500 text-sm mt-2">
+                          {errors.address}
+                        </p>
+                      )}
+                    </div>
+                  )}
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Phone *
-                    </label>
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent ${
-                        errors.phone ? "border-red-500" : "border-gray-300"
-                      }`}
-                    />
-                    {errors.phone && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {errors.phone}
-                      </p>
-                    )}
-                  </div>
+                  {/* New Address Form */}
+                  {(useNewAddress ||
+                    !profile?.addresses ||
+                    profile.addresses.length === 0) && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-200">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          First Name *
+                        </label>
+                        <input
+                          type="text"
+                          name="firstName"
+                          value={formData.firstName}
+                          onChange={handleInputChange}
+                          className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent ${
+                            errors.firstName
+                              ? "border-red-500"
+                              : "border-gray-300"
+                          }`}
+                        />
+                        {errors.firstName && (
+                          <p className="text-red-500 text-sm mt-1">
+                            {errors.firstName}
+                          </p>
+                        )}
+                      </div>
 
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Address *
-                    </label>
-                    <input
-                      type="text"
-                      name="address"
-                      value={formData.address}
-                      onChange={handleInputChange}
-                      className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent ${
-                        errors.address ? "border-red-500" : "border-gray-300"
-                      }`}
-                    />
-                    {errors.address && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {errors.address}
-                      </p>
-                    )}
-                  </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Last Name *
+                        </label>
+                        <input
+                          type="text"
+                          name="lastName"
+                          value={formData.lastName}
+                          onChange={handleInputChange}
+                          className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent ${
+                            errors.lastName
+                              ? "border-red-500"
+                              : "border-gray-300"
+                          }`}
+                        />
+                        {errors.lastName && (
+                          <p className="text-red-500 text-sm mt-1">
+                            {errors.lastName}
+                          </p>
+                        )}
+                      </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      City *
-                    </label>
-                    <input
-                      type="text"
-                      name="city"
-                      value={formData.city}
-                      onChange={handleInputChange}
-                      className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent ${
-                        errors.city ? "border-red-500" : "border-gray-300"
-                      }`}
-                    />
-                    {errors.city && (
-                      <p className="text-red-500 text-sm mt-1">{errors.city}</p>
-                    )}
-                  </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Address *
+                        </label>
+                        <input
+                          type="text"
+                          name="address"
+                          value={formData.address}
+                          onChange={handleInputChange}
+                          className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent ${
+                            errors.address
+                              ? "border-red-500"
+                              : "border-gray-300"
+                          }`}
+                        />
+                        {errors.address && (
+                          <p className="text-red-500 text-sm mt-1">
+                            {errors.address}
+                          </p>
+                        )}
+                      </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      State *
-                    </label>
-                    <input
-                      type="text"
-                      name="state"
-                      value={formData.state}
-                      onChange={handleInputChange}
-                      className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent ${
-                        errors.state ? "border-red-500" : "border-gray-300"
-                      }`}
-                    />
-                    {errors.state && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {errors.state}
-                      </p>
-                    )}
-                  </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          City *
+                        </label>
+                        <input
+                          type="text"
+                          name="city"
+                          value={formData.city}
+                          onChange={handleInputChange}
+                          className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent ${
+                            errors.city ? "border-red-500" : "border-gray-300"
+                          }`}
+                        />
+                        {errors.city && (
+                          <p className="text-red-500 text-sm mt-1">
+                            {errors.city}
+                          </p>
+                        )}
+                      </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      ZIP Code *
-                    </label>
-                    <input
-                      type="text"
-                      name="zipCode"
-                      value={formData.zipCode}
-                      onChange={handleInputChange}
-                      className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent ${
-                        errors.zipCode ? "border-red-500" : "border-gray-300"
-                      }`}
-                    />
-                    {errors.zipCode && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {errors.zipCode}
-                      </p>
-                    )}
-                  </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          State *
+                        </label>
+                        <input
+                          type="text"
+                          name="state"
+                          value={formData.state}
+                          onChange={handleInputChange}
+                          className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent ${
+                            errors.state ? "border-red-500" : "border-gray-300"
+                          }`}
+                        />
+                        {errors.state && (
+                          <p className="text-red-500 text-sm mt-1">
+                            {errors.state}
+                          </p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          ZIP Code *
+                        </label>
+                        <input
+                          type="text"
+                          name="zipCode"
+                          value={formData.zipCode}
+                          onChange={handleInputChange}
+                          className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent ${
+                            errors.zipCode
+                              ? "border-red-500"
+                              : "border-gray-300"
+                          }`}
+                        />
+                        {errors.zipCode && (
+                          <p className="text-red-500 text-sm mt-1">
+                            {errors.zipCode}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -507,103 +658,208 @@ const Checkout = () => {
                   </h2>
                 </div>
                 <div className="px-6 py-6 space-y-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Cardholder Name *
-                    </label>
-                    <input
-                      type="text"
-                      name="cardholderName"
-                      value={formData.cardholderName}
-                      onChange={handleInputChange}
-                      className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent ${
-                        errors.cardholderName
-                          ? "border-red-500"
-                          : "border-gray-300"
-                      }`}
-                    />
-                    {errors.cardholderName && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {errors.cardholderName}
-                      </p>
+                  {/* Saved Payment Methods */}
+                  {profile?.paymentMethods &&
+                    profile.paymentMethods.length > 0 && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-3">
+                          Select Payment Method
+                        </label>
+                        <div className="space-y-3">
+                          {profile.paymentMethods.map((pm) => (
+                            <div
+                              key={pm._id}
+                              onClick={() => {
+                                setSelectedPaymentId(pm._id);
+                                setUseNewPayment(false);
+                              }}
+                              className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                                selectedPaymentId === pm._id
+                                  ? "border-black bg-gray-50"
+                                  : "border-gray-200 hover:border-gray-300"
+                              }`}
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="radio"
+                                      name="selectedPayment"
+                                      checked={selectedPaymentId === pm._id}
+                                      onChange={() => {}}
+                                      className="w-4 h-4 text-black focus:ring-black"
+                                    />
+                                    <CreditCard
+                                      size={20}
+                                      className="text-gray-600"
+                                    />
+                                    <p className="font-medium text-gray-900">
+                                      {pm.type === "credit_card"
+                                        ? "Credit Card"
+                                        : pm.type === "debit_card"
+                                        ? "Debit Card"
+                                        : "PayPal"}
+                                    </p>
+                                    {pm.isDefault && (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                        Default
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-gray-600 mt-1 ml-6">
+                                    {pm.cardholderName}
+                                    <br />
+                                    •••• •••• •••• {pm.lastFourDigits}
+                                    <br />
+                                    Expires:{" "}
+                                    {String(pm.expiryMonth).padStart(2, "0")}/
+                                    {pm.expiryYear}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+
+                          {/* Add New Payment Option */}
+                          <div
+                            onClick={() => {
+                              setUseNewPayment(true);
+                              setSelectedPaymentId(null);
+                            }}
+                            className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                              useNewPayment
+                                ? "border-black bg-gray-50"
+                                : "border-gray-200 hover:border-gray-300"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="radio"
+                                name="selectedPayment"
+                                checked={useNewPayment}
+                                onChange={() => {}}
+                                className="w-4 h-4 text-black focus:ring-black"
+                              />
+                              <p className="font-medium text-gray-900">
+                                Add New Payment Method
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        {errors.payment && !useNewPayment && (
+                          <p className="text-red-500 text-sm mt-2">
+                            {errors.payment}
+                          </p>
+                        )}
+                      </div>
                     )}
-                  </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Card Number *
-                    </label>
-                    <input
-                      type="text"
-                      name="cardNumber"
-                      value={formData.cardNumber}
-                      onChange={(e) => {
-                        const formatted = formatCardNumber(e.target.value);
-                        setFormData((prev) => ({
-                          ...prev,
-                          cardNumber: formatted,
-                        }));
-                      }}
-                      placeholder="1234 5678 9012 3456"
-                      maxLength={19}
-                      className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent ${
-                        errors.cardNumber ? "border-red-500" : "border-gray-300"
-                      }`}
-                    />
-                    {errors.cardNumber && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {errors.cardNumber}
-                      </p>
-                    )}
-                  </div>
+                  {/* New Payment Form */}
+                  {(useNewPayment ||
+                    !profile?.paymentMethods ||
+                    profile.paymentMethods.length === 0) && (
+                    <div className="space-y-6 pt-4 border-t border-gray-200">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Cardholder Name *
+                        </label>
+                        <input
+                          type="text"
+                          name="cardholderName"
+                          value={formData.cardholderName}
+                          onChange={handleInputChange}
+                          className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent ${
+                            errors.cardholderName
+                              ? "border-red-500"
+                              : "border-gray-300"
+                          }`}
+                        />
+                        {errors.cardholderName && (
+                          <p className="text-red-500 text-sm mt-1">
+                            {errors.cardholderName}
+                          </p>
+                        )}
+                      </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Expiry Date *
-                      </label>
-                      <input
-                        type="text"
-                        name="expiryDate"
-                        value={formData.expiryDate}
-                        onChange={handleInputChange}
-                        placeholder="MM/YY"
-                        maxLength={5}
-                        className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent ${
-                          errors.expiryDate
-                            ? "border-red-500"
-                            : "border-gray-300"
-                        }`}
-                      />
-                      {errors.expiryDate && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {errors.expiryDate}
-                        </p>
-                      )}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Card Number *
+                        </label>
+                        <input
+                          type="text"
+                          name="cardNumber"
+                          value={formData.cardNumber}
+                          onChange={(e) => {
+                            const formatted = formatCardNumber(e.target.value);
+                            setFormData((prev) => ({
+                              ...prev,
+                              cardNumber: formatted,
+                            }));
+                          }}
+                          placeholder="1234 5678 9012 3456"
+                          maxLength={19}
+                          className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent ${
+                            errors.cardNumber
+                              ? "border-red-500"
+                              : "border-gray-300"
+                          }`}
+                        />
+                        {errors.cardNumber && (
+                          <p className="text-red-500 text-sm mt-1">
+                            {errors.cardNumber}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Expiry Date *
+                          </label>
+                          <input
+                            type="text"
+                            name="expiryDate"
+                            value={formData.expiryDate}
+                            onChange={handleInputChange}
+                            placeholder="MM/YY"
+                            maxLength={5}
+                            className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent ${
+                              errors.expiryDate
+                                ? "border-red-500"
+                                : "border-gray-300"
+                            }`}
+                          />
+                          {errors.expiryDate && (
+                            <p className="text-red-500 text-sm mt-1">
+                              {errors.expiryDate}
+                            </p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            CVV *
+                          </label>
+                          <input
+                            type="text"
+                            name="cvv"
+                            value={formData.cvv}
+                            onChange={handleInputChange}
+                            placeholder="123"
+                            maxLength={4}
+                            className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent ${
+                              errors.cvv ? "border-red-500" : "border-gray-300"
+                            }`}
+                          />
+                          {errors.cvv && (
+                            <p className="text-red-500 text-sm mt-1">
+                              {errors.cvv}
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        CVV *
-                      </label>
-                      <input
-                        type="text"
-                        name="cvv"
-                        value={formData.cvv}
-                        onChange={handleInputChange}
-                        placeholder="123"
-                        maxLength={4}
-                        className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent ${
-                          errors.cvv ? "border-red-500" : "border-gray-300"
-                        }`}
-                      />
-                      {errors.cvv && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {errors.cvv}
-                        </p>
-                      )}
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
 

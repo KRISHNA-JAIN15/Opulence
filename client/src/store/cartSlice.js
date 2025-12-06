@@ -238,7 +238,10 @@ const cartSlice = createSlice({
 
       if (existingItem) {
         // Update product data but preserve quantity
-        const quantity = Math.min(existingItem.quantity, updatedProduct.inStock);
+        const quantity = Math.min(
+          existingItem.quantity,
+          updatedProduct.inStock
+        );
         Object.assign(existingItem, { ...updatedProduct, quantity });
 
         // Calculate new totals

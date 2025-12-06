@@ -3,6 +3,11 @@ import { useSearchParams, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { getProducts, getCategories } from "../store/productSlice";
 import {
+  addToWishlist,
+  removeFromWishlist,
+  getWishlist,
+} from "../store/wishlistSlice";
+import {
   Search,
   Grid,
   List,
@@ -10,6 +15,7 @@ import {
   Star,
   ShoppingCart,
   Eye,
+  Heart,
 } from "lucide-react";
 
 const Products = () => {
@@ -25,6 +31,8 @@ const Products = () => {
   const dispatch = useDispatch();
   const { products, categories, isLoading, pagination, isError, message } =
     useSelector((state) => state.products);
+  const { wishlistItems } = useSelector((state) => state.wishlist);
+  const { token } = useSelector((state) => state.auth);
 
   const searchQuery = searchParams.get("search");
   const categoryFromUrl = searchParams.get("category");
@@ -33,12 +41,17 @@ const Products = () => {
   useEffect(() => {
     dispatch(getCategories());
 
+    // Get wishlist if user is logged in
+    if (token) {
+      dispatch(getWishlist());
+    }
+
     // Set initial category from URL if present
     if (categoryFromUrl) {
       console.log("Setting initial category from URL:", categoryFromUrl);
       setSelectedCategory(categoryFromUrl);
     }
-  }, [dispatch, categoryFromUrl]);
+  }, [dispatch, categoryFromUrl, token]);
 
   // Fetch products when filters change
   useEffect(() => {
@@ -379,6 +392,9 @@ const Products = () => {
                 product={product}
                 viewMode={viewMode}
                 formatPrice={formatPrice}
+                wishlistItems={wishlistItems}
+                token={token}
+                dispatch={dispatch}
               />
             ))}
           </div>
@@ -389,10 +405,42 @@ const Products = () => {
 };
 
 // Product Card Component
-const ProductCard = ({ product, viewMode, formatPrice }) => {
+const ProductCard = ({ product, viewMode, formatPrice, wishlistItems, token, dispatch }) => {
+  const isInWishlist = wishlistItems?.some((item) => item._id === product._id);
+
+  const handleWishlistToggle = (e) => {
+    e.preventDefault();
+    if (!token) {
+      alert("Please login to add items to wishlist");
+      return;
+    }
+    
+    if (isInWishlist) {
+      dispatch(removeFromWishlist(product._id));
+    } else {
+      dispatch(addToWishlist(product._id));
+    }
+  };
+
   if (viewMode === "list") {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 flex gap-4 hover:shadow-md transition">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 flex gap-4 hover:shadow-md transition relative">
+        {/* Wishlist Button */}
+        <button
+          onClick={handleWishlistToggle}
+          className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white shadow-md hover:bg-gray-50 transition"
+          title={isInWishlist ? "Remove from wishlist" : "Add to wishlist"}
+        >
+          <Heart
+            size={20}
+            className={`transition ${
+              isInWishlist
+                ? "fill-red-500 text-red-500"
+                : "text-gray-400 hover:text-red-500"
+            }`}
+          />
+        </button>
+
         {/* Product Image */}
         <div className="shrink-0 w-24 h-24 rounded-lg overflow-hidden">
           <img
@@ -486,7 +534,23 @@ const ProductCard = ({ product, viewMode, formatPrice }) => {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition group">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition group relative">
+      {/* Wishlist Button */}
+      <button
+        onClick={handleWishlistToggle}
+        className="absolute top-3 right-3 z-10 p-2 rounded-full bg-white shadow-md hover:bg-gray-50 transition"
+        title={isInWishlist ? "Remove from wishlist" : "Add to wishlist"}
+      >
+        <Heart
+          size={20}
+          className={`transition ${
+            isInWishlist
+              ? "fill-red-500 text-red-500"
+              : "text-gray-400 hover:text-red-500"
+          }`}
+        />
+      </button>
+
       {/* Product Image */}
       <Link
         to={`/products/${product._id}`}

@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../store/authSlice";
-import { Search, ShoppingCart, User, Menu, X } from "lucide-react";
+import { Search, ShoppingCart, User, Menu, X, Heart } from "lucide-react";
 import { useState, useEffect } from "react";
 
 const Header = () => {
@@ -12,6 +12,7 @@ const Header = () => {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
   const { cartQuantity } = useSelector((state) => state.cart);
+  const { wishlistItems } = useSelector((state) => state.wishlist);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -148,6 +149,25 @@ const Header = () => {
                 />
               </button>
 
+              {/* Wishlist */}
+              <Link
+                to="/wishlist"
+                className="relative p-3 hover:bg-gray-100 rounded-xl transition-all duration-200 transform hover:scale-110 active:scale-95 border border-transparent hover:border-gray-200 hover:shadow-sm"
+                aria-label="Wishlist"
+                title="My Wishlist"
+              >
+                <Heart
+                  size={20}
+                  strokeWidth={2.5}
+                  className="text-gray-700 hover:text-red-500 transition-colors"
+                />
+                {wishlistItems && wishlistItems.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    {wishlistItems.length}
+                  </span>
+                )}
+              </Link>
+
               {/* User/Auth */}
               {user ? (
                 <div className="relative group">
@@ -271,6 +291,13 @@ const Header = () => {
                 onClick={() => setIsMenuOpen(false)}
               >
                 Categories
+              </Link>
+              <Link
+                to="/wishlist"
+                className="block py-3 text-black font-bold hover:text-gray-600 hover:bg-gray-50 px-4 rounded transition uppercase tracking-wider text-sm"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Wishlist {wishlistItems && wishlistItems.length > 0 && `(${wishlistItems.length})`}
               </Link>
               <Link
                 to="/about"

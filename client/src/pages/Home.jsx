@@ -7,6 +7,7 @@ import {
   Headphones,
   ShoppingCart,
   Eye,
+  Heart,
 } from "lucide-react";
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -15,17 +16,27 @@ import {
   getDiscountedProducts,
 } from "../store/productSlice";
 import { addToCart } from "../store/cartSlice";
+import {
+  addToWishlist,
+  removeFromWishlist,
+  getWishlist,
+} from "../store/wishlistSlice";
 
 const Home = () => {
   const dispatch = useDispatch();
   const { featuredProducts, discountedProducts, isLoading } = useSelector(
     (state) => state.products
   );
+  const { wishlistItems } = useSelector((state) => state.wishlist);
+  const { token } = useSelector((state) => state.auth);
 
   useEffect(() => {
     dispatch(getFeaturedProducts(8));
     dispatch(getDiscountedProducts(8));
-  }, [dispatch]);
+    if (token) {
+      dispatch(getWishlist());
+    }
+  }, [dispatch, token]);
 
   return (
     <div className="min-h-screen">
@@ -72,7 +83,12 @@ const Home = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {featuredProducts.map((product) => (
-              <ProductCard key={product._id} product={product} />
+              <ProductCard
+                key={product._id}
+                product={product}
+                wishlistItems={wishlistItems}
+                token={token}
+              />
             ))}
           </div>
         )}
@@ -191,8 +207,25 @@ const Home = () => {
 };
 
 // Product Card Component
-const ProductCard = ({ product }) => {
+const ProductCard = ({ product, wishlistItems, token }) => {
   const dispatch = useDispatch();
+
+  const isInWishlist = wishlistItems?.some((item) => item._id === product._id);
+
+  const handleWishlistToggle = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!token) {
+      alert("Please login to add items to wishlist");
+      return;
+    }
+    
+    if (isInWishlist) {
+      dispatch(removeFromWishlist(product._id));
+    } else {
+      dispatch(addToWishlist(product._id));
+    }
+  };
 
   // Calculate discounted price and original price
   const hasDiscount = product.discount > 0;
@@ -219,7 +252,23 @@ const ProductCard = ({ product }) => {
   };
 
   return (
-    <div className="product-card group bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition">
+    <div className="product-card group bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition relative">
+      {/* Wishlist Button */}
+      <button
+        onClick={handleWishlistToggle}
+        className="absolute top-3 right-3 z-10 p-2 rounded-full bg-white shadow-md hover:bg-gray-50 transition"
+        title={isInWishlist ? "Remove from wishlist" : "Add to wishlist"}
+      >
+        <Heart
+          size={20}
+          className={`transition ${
+            isInWishlist
+              ? "fill-red-500 text-red-500"
+              : "text-gray-400 hover:text-red-500"
+          }`}
+        />
+      </button>
+
       <div className="relative aspect-square overflow-hidden bg-gray-100">
         {hasDiscount && (
           <span className="discount-badge">-{product.discount}%</span>

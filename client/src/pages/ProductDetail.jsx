@@ -100,7 +100,7 @@ const ProductDetail = () => {
       alert("Please login to add items to wishlist");
       return;
     }
-    
+
     if (isInWishlist) {
       dispatch(removeFromWishlist(id));
     } else {
@@ -233,7 +233,9 @@ const ProductDetail = () => {
               <button
                 onClick={handleWishlistToggle}
                 className="absolute top-4 right-4 p-2 bg-white rounded-full shadow-lg hover:bg-gray-50 transition"
-                title={isInWishlist ? "Remove from wishlist" : "Add to wishlist"}
+                title={
+                  isInWishlist ? "Remove from wishlist" : "Add to wishlist"
+                }
               >
                 <Heart
                   size={20}

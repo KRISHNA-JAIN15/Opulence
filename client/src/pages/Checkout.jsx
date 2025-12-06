@@ -7,12 +7,16 @@ import {
   ArrowLeft,
   CheckCircle,
   MapPin,
-  User,
-  Mail,
-  Phone,
+  Package,
 } from "lucide-react";
 import { clearCart, syncCartPrices } from "../store/cartSlice";
 import { getProfile } from "../store/profileSlice";
+import {
+  getRazorpayKey,
+  createRazorpayOrder,
+  verifyPaymentAndCreateOrder,
+  resetOrderState,
+} from "../store/orderSlice";
 
 const Checkout = () => {
   const dispatch = useDispatch();
@@ -21,12 +25,18 @@ const Checkout = () => {
     (state) => state.cart
   );
   const { profile } = useSelector((state) => state.profile);
-  const { user } = useSelector((state) => state.auth);
+  const { user, token } = useSelector((state) => state.auth);
+  const {
+    razorpayKey,
+    isPaymentLoading,
+    isSuccess,
+    currentOrder,
+    isError,
+    message,
+  } = useSelector((state) => state.order);
 
   const [selectedAddressId, setSelectedAddressId] = useState(null);
-  const [selectedPaymentId, setSelectedPaymentId] = useState(null);
   const [useNewAddress, setUseNewAddress] = useState(false);
-  const [useNewPayment, setUseNewPayment] = useState(false);
 
   const [formData, setFormData] = useState({
     // Shipping Information
@@ -38,20 +48,7 @@ const Checkout = () => {
     city: "",
     state: "",
     zipCode: "",
-    country: "United States",
-
-    // Payment Information
-    cardNumber: "",
-    expiryDate: "",
-    cvv: "",
-    cardholderName: "",
-
-    // Billing same as shipping
-    billingAddressSame: true,
-    billingAddress: "",
-    billingCity: "",
-    billingState: "",
-    billingZipCode: "",
+    country: "India",
 
     // Order Notes
     orderNotes: "",
@@ -60,6 +57,7 @@ const Checkout = () => {
   const [errors, setErrors] = useState({});
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
+  const [completedOrder, setCompletedOrder] = useState(null);
   const hasSynced = useRef(false);
 
   // Sync cart prices with latest product data when component mounts
@@ -70,27 +68,22 @@ const Checkout = () => {
     }
   }, [dispatch, cartItems.length]);
 
-  // Load profile data on mount
+  // Load profile data and Razorpay key on mount
   useEffect(() => {
-    if (user) {
+    if (user && token) {
       dispatch(getProfile());
+      dispatch(getRazorpayKey());
     }
-  }, [dispatch, user]);
+  }, [dispatch, user, token]);
 
   // Pre-populate form with profile data when profile loads
   useEffect(() => {
     if (profile) {
       const defaultAddress = profile.addresses?.find((addr) => addr.isDefault);
-      const defaultPayment = profile.paymentMethods?.find((pm) => pm.isDefault);
 
       // Set selected address
       if (defaultAddress && !selectedAddressId) {
         setSelectedAddressId(defaultAddress._id);
-      }
-
-      // Set selected payment
-      if (defaultPayment && !selectedPaymentId) {
-        setSelectedPaymentId(defaultPayment._id);
       }
 
       // Pre-populate email and phone from profile
@@ -106,13 +99,33 @@ const Checkout = () => {
       if (!profile.addresses || profile.addresses.length === 0) {
         setUseNewAddress(true);
       }
-
-      // If no saved payment methods, enable new payment form
-      if (!profile.paymentMethods || profile.paymentMethods.length === 0) {
-        setUseNewPayment(true);
-      }
     }
-  }, [profile, selectedAddressId, selectedPaymentId, formData.email, user]);
+  }, [profile, selectedAddressId, formData.email, user]);
+
+  // Handle successful order
+  useEffect(() => {
+    if (isSuccess && currentOrder) {
+      setOrderComplete(true);
+      setCompletedOrder(currentOrder);
+      dispatch(clearCart());
+      dispatch(resetOrderState());
+    }
+  }, [isSuccess, currentOrder, dispatch]);
+
+  // Handle order error
+  useEffect(() => {
+    if (isError && message) {
+      setErrors({ submit: message });
+      setIsProcessing(false);
+      dispatch(resetOrderState());
+    }
+  }, [isError, message, dispatch]);
+
+  // Redirect to login if not authenticated
+  if (!token) {
+    navigate("/login?redirect=checkout");
+    return null;
+  }
 
   // Redirect to cart if empty
   if (cartItems.length === 0 && !orderComplete) {
@@ -186,72 +199,84 @@ const Checkout = () => {
       });
     }
 
-    // Validate payment - either selected or new
-    if (!selectedPaymentId && !useNewPayment) {
-      newErrors.payment = "Please select a payment method or add a new one";
-    }
-
-    if (useNewPayment) {
-      const requiredPaymentFields = [
-        "cardNumber",
-        "expiryDate",
-        "cvv",
-        "cardholderName",
-      ];
-
-      requiredPaymentFields.forEach((field) => {
-        if (!formData[field].trim()) {
-          newErrors[field] = "This field is required";
-        }
-      });
-
-      // Card validation (basic)
-      if (
-        formData.cardNumber &&
-        formData.cardNumber.replace(/\D/g, "").length < 16
-      ) {
-        newErrors.cardNumber = "Please enter a valid card number";
-      }
-
-      // CVV validation
-      if (formData.cvv && formData.cvv.length < 3) {
-        newErrors.cvv = "Please enter a valid CVV";
-      }
-
-      // Expiry date validation
-      if (formData.expiryDate) {
-        const [month, year] = formData.expiryDate.split("/");
-        const now = new Date();
-        const expiry = new Date(2000 + parseInt(year), parseInt(month) - 1);
-        if (expiry < now) {
-          newErrors.expiryDate = "Card has expired";
-        }
-      }
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (document.getElementById("razorpay-script")) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement("script");
+      script.id = "razorpay-script";
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
 
+  const handlePayment = async () => {
     if (!validateForm()) {
       return;
     }
 
     setIsProcessing(true);
+    setErrors({});
 
     try {
-      // Prepare order data
+      // Load Razorpay script
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        setErrors({
+          submit: "Failed to load payment gateway. Please try again.",
+        });
+        setIsProcessing(false);
+        return;
+      }
+
+      // Create Razorpay order
+      const orderResult = await dispatch(createRazorpayOrder(total)).unwrap();
+
+      if (!orderResult.orderId) {
+        setErrors({
+          submit: "Failed to create payment order. Please try again.",
+        });
+        setIsProcessing(false);
+        return;
+      }
+
+      // Get shipping address
       const selectedAddress = selectedAddressId
         ? profile.addresses.find((addr) => addr._id === selectedAddressId)
         : null;
 
-      const selectedPayment = selectedPaymentId
-        ? profile.paymentMethods.find((pm) => pm._id === selectedPaymentId)
-        : null;
+      // Extract only the required shipping address fields
+      const shippingAddress = selectedAddress
+        ? {
+            firstName: selectedAddress.firstName,
+            lastName: selectedAddress.lastName,
+            address: selectedAddress.address,
+            apartment: selectedAddress.apartment || "",
+            city: selectedAddress.city,
+            state: selectedAddress.state,
+            zipCode: selectedAddress.zipCode,
+            country: selectedAddress.country || "India",
+          }
+        : {
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            address: formData.address,
+            apartment: "",
+            city: formData.city,
+            state: formData.state,
+            zipCode: formData.zipCode,
+            country: formData.country,
+          };
 
+      // Prepare order data
       const orderData = {
         items: cartItems.map((item) => ({
           productId: item._id,
@@ -263,24 +288,7 @@ const Checkout = () => {
           quantity: item.quantity,
           image: item.image || item.images?.[0]?.url,
         })),
-        shippingAddress: selectedAddress || {
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          address: formData.address,
-          city: formData.city,
-          state: formData.state,
-          zipCode: formData.zipCode,
-          country: formData.country,
-        },
-        paymentMethod: selectedPayment
-          ? {
-              type: selectedPayment.type,
-              lastFourDigits: selectedPayment.lastFourDigits,
-            }
-          : {
-              type: "credit_card",
-              lastFourDigits: formData.cardNumber.slice(-4),
-            },
+        shippingAddress,
         email: formData.email,
         phone: formData.phone,
         subtotal,
@@ -290,39 +298,67 @@ const Checkout = () => {
         orderNotes: formData.orderNotes,
       };
 
-      // Simulate API call - Replace with actual payment processing
-      console.log("Order Data:", orderData);
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Razorpay options
+      const options = {
+        key: razorpayKey,
+        amount: orderResult.amount,
+        currency: orderResult.currency || "INR",
+        name: "Opulence",
+        description: "Order Payment",
+        order_id: orderResult.orderId,
+        handler: async function (response) {
+          try {
+            // Verify payment and create order
+            await dispatch(
+              verifyPaymentAndCreateOrder({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                orderData,
+              })
+            ).unwrap();
+          } catch (error) {
+            setErrors({ submit: error || "Payment verification failed" });
+            setIsProcessing(false);
+          }
+        },
+        prefill: {
+          name: shippingAddress.firstName + " " + shippingAddress.lastName,
+          email: formData.email,
+          contact: formData.phone,
+        },
+        notes: {
+          address: shippingAddress.address,
+        },
+        theme: {
+          color: "#000000",
+        },
+        modal: {
+          ondismiss: function () {
+            setIsProcessing(false);
+          },
+        },
+      };
 
-      // Clear cart and show success
-      dispatch(clearCart());
-      setOrderComplete(true);
+      const paymentObject = new window.Razorpay(options);
+      paymentObject.on("payment.failed", function (response) {
+        setErrors({
+          submit:
+            response.error.description || "Payment failed. Please try again.",
+        });
+        setIsProcessing(false);
+      });
+      paymentObject.open();
     } catch (error) {
-      console.error("Payment failed:", error);
-      setErrors({ submit: "Payment failed. Please try again." });
-    } finally {
+      console.error("Payment error:", error);
+      setErrors({
+        submit: error.message || "Payment failed. Please try again.",
+      });
       setIsProcessing(false);
     }
   };
 
-  const formatCardNumber = (value) => {
-    const v = value.replace(/\s+/g, "").replace(/[^0-9]/gi, "");
-    const matches = v.match(/\d{4,16}/g);
-    const match = (matches && matches[0]) || "";
-    const parts = [];
-
-    for (let i = 0, len = match.length; i < len; i += 4) {
-      parts.push(match.substring(i, i + 4));
-    }
-
-    if (parts.length) {
-      return parts.join(" ");
-    } else {
-      return v;
-    }
-  };
-
-  if (orderComplete) {
+  if (orderComplete && completedOrder) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="max-w-md mx-auto text-center bg-white rounded-lg shadow-lg p-8">
@@ -332,22 +368,32 @@ const Checkout = () => {
           <h1 className="text-2xl font-bold text-gray-900 mb-4">
             Order Successful!
           </h1>
-          <p className="text-gray-600 mb-8">
-            Thank you for your purchase. Your order has been confirmed and will
-            be shipped soon.
+          <p className="text-gray-600 mb-4">
+            Thank you for your purchase. Your order has been confirmed.
           </p>
+          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <p className="text-sm text-gray-600">Order Number</p>
+            <p className="text-lg font-bold text-gray-900">
+              {completedOrder.orderNumber}
+            </p>
+            <p className="text-sm text-gray-600 mt-2">Total Amount</p>
+            <p className="text-lg font-bold text-gray-900">
+              ₹{completedOrder.total?.toFixed(2)}
+            </p>
+          </div>
           <div className="space-y-4">
             <button
-              onClick={() => navigate("/products")}
-              className="w-full btn-primary"
+              onClick={() => navigate(`/orders/${completedOrder._id}`)}
+              className="w-full btn-primary flex items-center justify-center gap-2"
             >
-              Continue Shopping
+              <Package size={20} />
+              Track Order
             </button>
             <button
-              onClick={() => navigate("/")}
+              onClick={() => navigate("/products")}
               className="w-full border border-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-50 transition-colors"
             >
-              Back to Home
+              Continue Shopping
             </button>
           </div>
         </div>
@@ -373,7 +419,7 @@ const Checkout = () => {
         <div className="lg:grid lg:grid-cols-12 lg:gap-8">
           {/* Checkout Form */}
           <div className="lg:col-span-7">
-            <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="space-y-8">
               {/* Shipping Information */}
               <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div className="px-6 py-4 border-b border-gray-200">
@@ -644,6 +690,19 @@ const Checkout = () => {
                           </p>
                         )}
                       </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Country
+                        </label>
+                        <input
+                          type="text"
+                          name="country"
+                          value={formData.country}
+                          onChange={handleInputChange}
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
@@ -654,212 +713,30 @@ const Checkout = () => {
                 <div className="px-6 py-4 border-b border-gray-200">
                   <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                     <CreditCard size={20} />
-                    Payment Information
+                    Payment Method
                   </h2>
                 </div>
-                <div className="px-6 py-6 space-y-6">
-                  {/* Saved Payment Methods */}
-                  {profile?.paymentMethods &&
-                    profile.paymentMethods.length > 0 && (
+                <div className="px-6 py-6">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src="https://razorpay.com/assets/razorpay-logo.svg"
+                        alt="Razorpay"
+                        className="h-6"
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                        }}
+                      />
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-3">
-                          Select Payment Method
-                        </label>
-                        <div className="space-y-3">
-                          {profile.paymentMethods.map((pm) => (
-                            <div
-                              key={pm._id}
-                              onClick={() => {
-                                setSelectedPaymentId(pm._id);
-                                setUseNewPayment(false);
-                              }}
-                              className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                                selectedPaymentId === pm._id
-                                  ? "border-black bg-gray-50"
-                                  : "border-gray-200 hover:border-gray-300"
-                              }`}
-                            >
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2">
-                                    <input
-                                      type="radio"
-                                      name="selectedPayment"
-                                      checked={selectedPaymentId === pm._id}
-                                      onChange={() => {}}
-                                      className="w-4 h-4 text-black focus:ring-black"
-                                    />
-                                    <CreditCard
-                                      size={20}
-                                      className="text-gray-600"
-                                    />
-                                    <p className="font-medium text-gray-900">
-                                      {pm.type === "credit_card"
-                                        ? "Credit Card"
-                                        : pm.type === "debit_card"
-                                        ? "Debit Card"
-                                        : "PayPal"}
-                                    </p>
-                                    {pm.isDefault && (
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                        Default
-                                      </span>
-                                    )}
-                                  </div>
-                                  <p className="text-sm text-gray-600 mt-1 ml-6">
-                                    {pm.cardholderName}
-                                    <br />
-                                    •••• •••• •••• {pm.lastFourDigits}
-                                    <br />
-                                    Expires:{" "}
-                                    {String(pm.expiryMonth).padStart(2, "0")}/
-                                    {pm.expiryYear}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-
-                          {/* Add New Payment Option */}
-                          <div
-                            onClick={() => {
-                              setUseNewPayment(true);
-                              setSelectedPaymentId(null);
-                            }}
-                            className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                              useNewPayment
-                                ? "border-black bg-gray-50"
-                                : "border-gray-200 hover:border-gray-300"
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="radio"
-                                name="selectedPayment"
-                                checked={useNewPayment}
-                                onChange={() => {}}
-                                className="w-4 h-4 text-black focus:ring-black"
-                              />
-                              <p className="font-medium text-gray-900">
-                                Add New Payment Method
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                        {errors.payment && !useNewPayment && (
-                          <p className="text-red-500 text-sm mt-2">
-                            {errors.payment}
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                  {/* New Payment Form */}
-                  {(useNewPayment ||
-                    !profile?.paymentMethods ||
-                    profile.paymentMethods.length === 0) && (
-                    <div className="space-y-6 pt-4 border-t border-gray-200">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Cardholder Name *
-                        </label>
-                        <input
-                          type="text"
-                          name="cardholderName"
-                          value={formData.cardholderName}
-                          onChange={handleInputChange}
-                          className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent ${
-                            errors.cardholderName
-                              ? "border-red-500"
-                              : "border-gray-300"
-                          }`}
-                        />
-                        {errors.cardholderName && (
-                          <p className="text-red-500 text-sm mt-1">
-                            {errors.cardholderName}
-                          </p>
-                        )}
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Card Number *
-                        </label>
-                        <input
-                          type="text"
-                          name="cardNumber"
-                          value={formData.cardNumber}
-                          onChange={(e) => {
-                            const formatted = formatCardNumber(e.target.value);
-                            setFormData((prev) => ({
-                              ...prev,
-                              cardNumber: formatted,
-                            }));
-                          }}
-                          placeholder="1234 5678 9012 3456"
-                          maxLength={19}
-                          className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent ${
-                            errors.cardNumber
-                              ? "border-red-500"
-                              : "border-gray-300"
-                          }`}
-                        />
-                        {errors.cardNumber && (
-                          <p className="text-red-500 text-sm mt-1">
-                            {errors.cardNumber}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Expiry Date *
-                          </label>
-                          <input
-                            type="text"
-                            name="expiryDate"
-                            value={formData.expiryDate}
-                            onChange={handleInputChange}
-                            placeholder="MM/YY"
-                            maxLength={5}
-                            className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent ${
-                              errors.expiryDate
-                                ? "border-red-500"
-                                : "border-gray-300"
-                            }`}
-                          />
-                          {errors.expiryDate && (
-                            <p className="text-red-500 text-sm mt-1">
-                              {errors.expiryDate}
-                            </p>
-                          )}
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            CVV *
-                          </label>
-                          <input
-                            type="text"
-                            name="cvv"
-                            value={formData.cvv}
-                            onChange={handleInputChange}
-                            placeholder="123"
-                            maxLength={4}
-                            className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent ${
-                              errors.cvv ? "border-red-500" : "border-gray-300"
-                            }`}
-                          />
-                          {errors.cvv && (
-                            <p className="text-red-500 text-sm mt-1">
-                              {errors.cvv}
-                            </p>
-                          )}
-                        </div>
+                        <p className="font-medium text-gray-900">
+                          Pay securely with Razorpay
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          Credit/Debit Cards, UPI, Net Banking, Wallets
+                        </p>
                       </div>
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
 
@@ -885,19 +762,20 @@ const Checkout = () => {
               {/* Submit Button */}
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 px-6 py-6">
                 <button
-                  type="submit"
-                  disabled={isProcessing}
+                  type="button"
+                  onClick={handlePayment}
+                  disabled={isProcessing || isPaymentLoading}
                   className="w-full btn-primary flex items-center justify-center gap-2 py-3 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isProcessing ? (
+                  {isProcessing || isPaymentLoading ? (
                     <>
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      Processing Payment...
+                      Processing...
                     </>
                   ) : (
                     <>
                       <Shield size={20} />
-                      Place Order - ${total.toFixed(2)}
+                      Pay ₹{total.toFixed(2)}
                     </>
                   )}
                 </button>
@@ -907,7 +785,7 @@ const Checkout = () => {
                   </p>
                 )}
               </div>
-            </form>
+            </div>
           </div>
 
           {/* Order Summary */}
@@ -946,11 +824,11 @@ const Checkout = () => {
                             {item.name}
                           </p>
                           <p className="text-sm text-gray-500">
-                            Qty: {item.quantity} × ${discountedPrice.toFixed(2)}
+                            Qty: {item.quantity} × ₹{discountedPrice.toFixed(2)}
                           </p>
                         </div>
                         <span className="text-sm font-medium text-gray-900">
-                          ${(discountedPrice * item.quantity).toFixed(2)}
+                          ₹{(discountedPrice * item.quantity).toFixed(2)}
                         </span>
                       </div>
                     );
@@ -963,19 +841,19 @@ const Checkout = () => {
                     <span className="text-gray-600">
                       Subtotal ({cartQuantity} items)
                     </span>
-                    <span className="font-medium">${subtotal.toFixed(2)}</span>
+                    <span className="font-medium">₹{subtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Shipping</span>
                     <span className="font-medium text-green-600">Free</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Tax</span>
-                    <span className="font-medium">${tax.toFixed(2)}</span>
+                    <span className="text-gray-600">Tax (8%)</span>
+                    <span className="font-medium">₹{tax.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-lg font-bold border-t border-gray-200 pt-3">
                     <span>Total</span>
-                    <span>${total.toFixed(2)}</span>
+                    <span>₹{total.toFixed(2)}</span>
                   </div>
                 </div>
 

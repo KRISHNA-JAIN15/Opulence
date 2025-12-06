@@ -1,21 +1,16 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import {
   User,
   MapPin,
-  CreditCard,
   Settings,
   Plus,
   Edit3,
   Trash2,
-  Check,
-  X,
   Mail,
-  Phone,
-  Calendar,
-  Home,
-  Building,
   Package,
+  Eye,
 } from "lucide-react";
 import {
   getProfile,
@@ -23,22 +18,26 @@ import {
   addAddress,
   updateAddress,
   deleteAddress,
-  addPaymentMethod,
-  deletePaymentMethod,
   updatePreferences,
 } from "../store/profileSlice";
+import { getUserOrders } from "../store/orderSlice";
 
 const Profile = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { profile, isLoading, isError, isSuccess, message } = useSelector(
     (state) => state.profile
   );
   const { user } = useSelector((state) => state.auth);
+  const {
+    orders,
+    isLoading: ordersLoading,
+    pagination,
+  } = useSelector((state) => state.order);
 
   const [activeTab, setActiveTab] = useState("personal");
   const [editingAddress, setEditingAddress] = useState(null);
   const [showAddAddress, setShowAddAddress] = useState(false);
-  const [showAddPayment, setShowAddPayment] = useState(false);
   const [formData, setFormData] = useState({});
 
   // Load profile on component mount
@@ -47,6 +46,13 @@ const Profile = () => {
       dispatch(getProfile());
     }
   }, [dispatch, user]);
+
+  // Load orders when switching to orders tab
+  useEffect(() => {
+    if (activeTab === "orders" && user) {
+      dispatch(getUserOrders({ page: 1, limit: 10 }));
+    }
+  }, [activeTab, dispatch, user]);
 
   // Handle form data changes
   const handleInputChange = (e) => {
@@ -355,176 +361,6 @@ const Profile = () => {
     );
   };
 
-  // Payment Method Form
-  const PaymentForm = ({ onCancel }) => {
-    const [paymentData, setPaymentData] = useState({
-      cardholderName: "",
-      cardNumber: "",
-      expiryMonth: "",
-      expiryYear: "",
-      cvv: "",
-      isDefault: false,
-    });
-
-    const handleSubmit = (e) => {
-      e.preventDefault();
-
-      // Extract last 4 digits and determine card type
-      const lastFour = paymentData.cardNumber.slice(-4);
-      const cardType = getCardType(paymentData.cardNumber);
-
-      dispatch(
-        addPaymentMethod({
-          cardholderName: paymentData.cardholderName,
-          lastFourDigits: lastFour,
-          expiryMonth: parseInt(paymentData.expiryMonth),
-          expiryYear: parseInt(paymentData.expiryYear),
-          cardType,
-          isDefault: paymentData.isDefault,
-        })
-      );
-      setShowAddPayment(false);
-    };
-
-    const getCardType = (cardNumber) => {
-      const firstDigit = cardNumber[0];
-      if (firstDigit === "4") return "visa";
-      if (firstDigit === "5") return "mastercard";
-      if (firstDigit === "3") return "amex";
-      if (firstDigit === "6") return "discover";
-      return "visa";
-    };
-
-    const handleChange = (e) => {
-      const { name, value, type, checked } = e.target;
-      setPaymentData((prev) => ({
-        ...prev,
-        [name]: type === "checkbox" ? checked : value,
-      }));
-    };
-
-    return (
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Cardholder Name *
-          </label>
-          <input
-            type="text"
-            name="cardholderName"
-            value={paymentData.cardholderName}
-            onChange={handleChange}
-            required
-            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent text-sm"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Card Number *
-          </label>
-          <input
-            type="text"
-            name="cardNumber"
-            value={paymentData.cardNumber}
-            onChange={handleChange}
-            placeholder="1234 5678 9012 3456"
-            required
-            maxLength={19}
-            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent text-sm"
-          />
-        </div>
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Month *
-            </label>
-            <select
-              name="expiryMonth"
-              value={paymentData.expiryMonth}
-              onChange={handleChange}
-              required
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent text-sm"
-            >
-              <option value="">MM</option>
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
-                <option key={month} value={month}>
-                  {month.toString().padStart(2, "0")}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Year *
-            </label>
-            <select
-              name="expiryYear"
-              value={paymentData.expiryYear}
-              onChange={handleChange}
-              required
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent text-sm"
-            >
-              <option value="">YYYY</option>
-              {Array.from(
-                { length: 10 },
-                (_, i) => new Date().getFullYear() + i
-              ).map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              CVV *
-            </label>
-            <input
-              type="text"
-              name="cvv"
-              value={paymentData.cvv}
-              onChange={handleChange}
-              placeholder="123"
-              required
-              maxLength={4}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent text-sm"
-            />
-          </div>
-        </div>
-        <div>
-          <label className="flex items-center">
-            <input
-              type="checkbox"
-              name="isDefault"
-              checked={paymentData.isDefault}
-              onChange={handleChange}
-              className="rounded border-gray-300 text-black focus:ring-black"
-            />
-            <span className="ml-2 text-sm text-gray-700">
-              Set as default payment method
-            </span>
-          </label>
-        </div>
-        <div className="flex gap-3 pt-4">
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="flex-1 btn-primary text-sm py-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? "Adding..." : "Add Payment Method"}
-          </button>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="flex-1 btn-secondary text-sm py-2"
-          >
-            Cancel
-          </button>
-        </div>
-      </form>
-    );
-  };
-
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -564,11 +400,6 @@ const Profile = () => {
                 {[
                   { id: "personal", label: "Personal Info", icon: User },
                   { id: "addresses", label: "Addresses", icon: MapPin },
-                  {
-                    id: "payments",
-                    label: "Payment Methods",
-                    icon: CreditCard,
-                  },
                   { id: "orders", label: "Order History", icon: Package },
                   { id: "preferences", label: "Preferences", icon: Settings },
                 ].map(({ id, label, icon: Icon }) => (
@@ -597,7 +428,6 @@ const Profile = () => {
                 <h2 className="text-lg font-semibold text-gray-900">
                   {activeTab === "personal" && "Personal Information"}
                   {activeTab === "addresses" && "Delivery Addresses"}
-                  {activeTab === "payments" && "Payment Methods"}
                   {activeTab === "orders" && "Order History"}
                   {activeTab === "preferences" && "Account Preferences"}
                 </h2>
@@ -725,94 +555,147 @@ const Profile = () => {
                       </div>
                     )}
 
-                    {/* Payment Methods Tab */}
-                    {activeTab === "payments" && (
+                    {/* Order History Tab */}
+                    {activeTab === "orders" && (
                       <div>
-                        {!showAddPayment && (
-                          <div className="mb-6">
+                        {ordersLoading ? (
+                          <div className="flex justify-center py-12">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
+                          </div>
+                        ) : orders && orders.length > 0 ? (
+                          <div className="space-y-4">
+                            {orders.map((order) => (
+                              <div
+                                key={order._id}
+                                className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors"
+                              >
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-3 mb-2">
+                                      <p className="font-medium text-gray-900">
+                                        Order #{order.orderNumber}
+                                      </p>
+                                      <span
+                                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                          order.orderStatus === "delivered"
+                                            ? "bg-green-100 text-green-800"
+                                            : order.orderStatus === "cancelled"
+                                            ? "bg-red-100 text-red-800"
+                                            : order.orderStatus === "shipped" ||
+                                              order.orderStatus ===
+                                                "out_for_delivery"
+                                            ? "bg-blue-100 text-blue-800"
+                                            : "bg-yellow-100 text-yellow-800"
+                                        }`}
+                                      >
+                                        {order.orderStatus
+                                          .replace(/_/g, " ")
+                                          .replace(/\b\w/g, (l) =>
+                                            l.toUpperCase()
+                                          )}
+                                      </span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+                                      <span>
+                                        {new Date(
+                                          order.createdAt
+                                        ).toLocaleDateString("en-IN", {
+                                          year: "numeric",
+                                          month: "short",
+                                          day: "numeric",
+                                        })}
+                                      </span>
+                                      <span>•</span>
+                                      <span>{order.items.length} items</span>
+                                      <span>•</span>
+                                      <span className="font-medium text-gray-900">
+                                        ₹{order.pricing.total.toFixed(2)}
+                                      </span>
+                                    </div>
+                                    {/* Order Items Preview */}
+                                    <div className="flex items-center gap-2 mt-3">
+                                      {order.items
+                                        .slice(0, 3)
+                                        .map((item, idx) => (
+                                          <img
+                                            key={idx}
+                                            src={
+                                              item.image ||
+                                              "/placeholder-product.jpg"
+                                            }
+                                            alt={item.name}
+                                            className="w-10 h-10 object-cover rounded border border-gray-200"
+                                          />
+                                        ))}
+                                      {order.items.length > 3 && (
+                                        <span className="text-sm text-gray-500">
+                                          +{order.items.length - 3} more
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() =>
+                                        navigate(`/orders/${order._id}`)
+                                      }
+                                      className="flex items-center gap-1 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                                    >
+                                      <Eye size={16} />
+                                      View Details
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+
+                            {/* Pagination */}
+                            {pagination.pages > 1 && (
+                              <div className="flex justify-center gap-2 mt-6">
+                                {Array.from(
+                                  { length: pagination.pages },
+                                  (_, i) => i + 1
+                                ).map((page) => (
+                                  <button
+                                    key={page}
+                                    onClick={() =>
+                                      dispatch(
+                                        getUserOrders({ page, limit: 10 })
+                                      )
+                                    }
+                                    className={`px-3 py-1 rounded ${
+                                      pagination.page === page
+                                        ? "bg-black text-white"
+                                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                    }`}
+                                  >
+                                    {page}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-center py-12">
+                            <Package
+                              size={48}
+                              className="mx-auto text-gray-400 mb-4"
+                            />
+                            <h3 className="text-lg font-medium text-gray-900 mb-2">
+                              No Orders Yet
+                            </h3>
+                            <p className="text-gray-600 mb-6">
+                              You haven't placed any orders yet. Start shopping
+                              to see your order history here.
+                            </p>
                             <button
-                              onClick={() => setShowAddPayment(true)}
-                              className="flex items-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-gray-400 hover:text-gray-700 transition-colors w-full"
+                              onClick={() => navigate("/products")}
+                              className="btn-primary inline-block"
                             >
-                              <Plus size={20} />
-                              Add Payment Method
+                              Start Shopping
                             </button>
                           </div>
                         )}
-
-                        {showAddPayment && (
-                          <div className="mb-6 p-4 border border-gray-200 rounded-lg">
-                            <h3 className="font-medium mb-4">
-                              Add Payment Method
-                            </h3>
-                            <PaymentForm
-                              onCancel={() => setShowAddPayment(false)}
-                            />
-                          </div>
-                        )}
-
-                        <div className="space-y-4">
-                          {profile?.paymentMethods?.map((payment) => (
-                            <div
-                              key={payment._id}
-                              className="border border-gray-200 rounded-lg p-4 flex justify-between items-center"
-                            >
-                              <div className="flex items-center gap-4">
-                                <div className="w-12 h-8 bg-gray-100 rounded flex items-center justify-center">
-                                  <CreditCard
-                                    size={16}
-                                    className="text-gray-600"
-                                  />
-                                </div>
-                                <div>
-                                  <p className="font-medium">
-                                    **** **** **** {payment.lastFourDigits}
-                                  </p>
-                                  <p className="text-sm text-gray-600">
-                                    {payment.cardholderName} • Expires{" "}
-                                    {payment.expiryMonth}/{payment.expiryYear}
-                                  </p>
-                                  {payment.isDefault && (
-                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 mt-1">
-                                      Default
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              <button
-                                onClick={() =>
-                                  dispatch(deletePaymentMethod(payment._id))
-                                }
-                                className="p-2 text-gray-400 hover:text-red-600"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Order History Tab */}
-                    {activeTab === "orders" && (
-                      <div className="text-center py-12">
-                        <Package
-                          size={48}
-                          className="mx-auto text-gray-400 mb-4"
-                        />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">
-                          No Orders Yet
-                        </h3>
-                        <p className="text-gray-600 mb-6">
-                          You haven't placed any orders yet. Start shopping to
-                          see your order history here.
-                        </p>
-                        <a
-                          href="/products"
-                          className="btn-primary inline-block"
-                        >
-                          Start Shopping
-                        </a>
                       </div>
                     )}
 

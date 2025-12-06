@@ -219,7 +219,7 @@ const ProductCard = ({ product, wishlistItems, token }) => {
       alert("Please login to add items to wishlist");
       return;
     }
-    
+
     if (isInWishlist) {
       dispatch(removeFromWishlist(product._id));
     } else {

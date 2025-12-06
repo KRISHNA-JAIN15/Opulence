@@ -405,7 +405,14 @@ const Products = () => {
 };
 
 // Product Card Component
-const ProductCard = ({ product, viewMode, formatPrice, wishlistItems, token, dispatch }) => {
+const ProductCard = ({
+  product,
+  viewMode,
+  formatPrice,
+  wishlistItems,
+  token,
+  dispatch,
+}) => {
   const isInWishlist = wishlistItems?.some((item) => item._id === product._id);
 
   const handleWishlistToggle = (e) => {
@@ -414,7 +421,7 @@ const ProductCard = ({ product, viewMode, formatPrice, wishlistItems, token, dis
       alert("Please login to add items to wishlist");
       return;
     }
-    
+
     if (isInWishlist) {
       dispatch(removeFromWishlist(product._id));
     } else {

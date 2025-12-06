@@ -297,7 +297,10 @@ const Header = () => {
                 className="block py-3 text-black font-bold hover:text-gray-600 hover:bg-gray-50 px-4 rounded transition uppercase tracking-wider text-sm"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Wishlist {wishlistItems && wishlistItems.length > 0 && `(${wishlistItems.length})`}
+                Wishlist{" "}
+                {wishlistItems &&
+                  wishlistItems.length > 0 &&
+                  `(${wishlistItems.length})`}
               </Link>
               <Link
                 to="/about"

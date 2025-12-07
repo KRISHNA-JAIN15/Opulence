@@ -170,13 +170,20 @@ exports.verifyPaymentAndCreateOrder = async (req, res) => {
     // Create order
     const order = new Order({
       user: req.user._id,
-      items: orderData.items.map((item) => ({
-        product: item.productId,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-        image: item.image,
-      })),
+      items: await Promise.all(
+        orderData.items.map(async (item) => {
+          const product = await Product.findById(item.productId);
+          return {
+            product: item.productId,
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+            image: item.image,
+            returnDays: product?.returnDays || 0,
+            costPrice: product?.costPrice || 0,
+          };
+        })
+      ),
       shippingAddress: orderData.shippingAddress,
       contact: {
         email: orderData.email,
@@ -345,13 +352,20 @@ exports.createWalletOrder = async (req, res) => {
     // Create order
     const order = new Order({
       user: req.user._id,
-      items: orderData.items.map((item) => ({
-        product: item.productId,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-        image: item.image,
-      })),
+      items: await Promise.all(
+        orderData.items.map(async (item) => {
+          const product = await Product.findById(item.productId);
+          return {
+            product: item.productId,
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+            image: item.image,
+            returnDays: product?.returnDays || 0,
+            costPrice: product?.costPrice || 0,
+          };
+        })
+      ),
       shippingAddress: orderData.shippingAddress,
       contact: {
         email: orderData.email,
@@ -574,7 +588,17 @@ exports.getAllOrders = async (req, res) => {
     const skip = (page - 1) * limit;
     const status = req.query.status;
 
-    const query = status ? { orderStatus: status } : {};
+    let query = {};
+
+    // Handle return status filters
+    if (status) {
+      if (status.startsWith("return_")) {
+        const returnStatus = status.replace("return_", "");
+        query = { "returnRequest.status": returnStatus };
+      } else {
+        query = { orderStatus: status };
+      }
+    }
 
     const orders = await Order.find(query)
       .sort({ createdAt: -1 })
@@ -862,6 +886,279 @@ exports.getSalesStats = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to get sales statistics",
+    });
+  }
+};
+
+// Initiate Return Request (User)
+exports.initiateReturn = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { reason } = req.body;
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Verify the order belongs to the user
+    if (order.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to return this order",
+      });
+    }
+
+    // Check if order is delivered
+    if (order.orderStatus !== "delivered") {
+      return res.status(400).json({
+        success: false,
+        message: "Only delivered orders can be returned",
+      });
+    }
+
+    // Check if return is already requested
+    if (order.returnRequest?.isRequested) {
+      return res.status(400).json({
+        success: false,
+        message: "Return has already been requested for this order",
+      });
+    }
+
+    // Check if within return window (using max return days from items)
+    const maxReturnDays = Math.max(
+      ...order.items.map((item) => item.returnDays || 0)
+    );
+
+    if (maxReturnDays === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "This order is not eligible for return",
+      });
+    }
+
+    const deliveredAt =
+      order.deliveredAt ||
+      order.statusHistory.find((s) => s.status === "delivered")?.timestamp;
+    if (!deliveredAt) {
+      return res.status(400).json({
+        success: false,
+        message: "Delivery date not found",
+      });
+    }
+
+    const daysSinceDelivery = Math.floor(
+      (Date.now() - new Date(deliveredAt)) / (1000 * 60 * 60 * 24)
+    );
+
+    if (daysSinceDelivery > maxReturnDays) {
+      return res.status(400).json({
+        success: false,
+        message: `Return window has expired. You had ${maxReturnDays} days to initiate a return.`,
+      });
+    }
+
+    // Calculate estimated pickup (3-5 business days from now)
+    const estimatedPickup = new Date();
+    estimatedPickup.setDate(
+      estimatedPickup.getDate() + Math.floor(Math.random() * 3) + 3
+    );
+
+    // Update order with return request
+    order.returnRequest = {
+      isRequested: true,
+      requestedAt: new Date(),
+      reason: reason || "No reason provided",
+      status: "pending",
+      estimatedPickup: estimatedPickup,
+      refundAmount: order.pricing.total,
+    };
+
+    order.orderStatus = "returned";
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      message:
+        "Return request initiated successfully. Expected pickup in 3-5 business days.",
+      returnRequest: order.returnRequest,
+    });
+  } catch (error) {
+    console.error("Error initiating return:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to initiate return",
+    });
+  }
+};
+
+// Get Return Requests (Admin)
+exports.getReturnRequests = async (req, res) => {
+  try {
+    const { status, page = 1, limit = 20 } = req.query;
+
+    const query = { "returnRequest.isRequested": true };
+
+    if (status) {
+      query["returnRequest.status"] = status;
+    }
+
+    const orders = await Order.find(query)
+      .populate("user", "name email")
+      .sort({ "returnRequest.requestedAt": -1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    const total = await Order.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      orders,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / limit),
+        total,
+      },
+    });
+  } catch (error) {
+    console.error("Error getting return requests:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get return requests",
+    });
+  }
+};
+
+// Update Return Status (Admin)
+exports.updateReturnStatus = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { status, adminNotes } = req.body;
+
+    const validStatuses = [
+      "pending",
+      "approved",
+      "in_transit",
+      "received",
+      "completed",
+      "rejected",
+    ];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid return status",
+      });
+    }
+
+    const order = await Order.findById(orderId).populate(
+      "user",
+      "name email balance"
+    );
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    if (!order.returnRequest?.isRequested) {
+      return res.status(400).json({
+        success: false,
+        message: "No return request found for this order",
+      });
+    }
+
+    order.returnRequest.status = status;
+    if (adminNotes) {
+      order.returnRequest.adminNotes = adminNotes;
+    }
+
+    // Handle specific status updates
+    if (status === "received") {
+      order.returnRequest.receivedAt = new Date();
+    }
+
+    // If completed, process refund to user wallet
+    if (status === "completed") {
+      order.returnRequest.completedAt = new Date();
+
+      const refundAmount =
+        order.returnRequest.refundAmount || order.pricing.total;
+
+      // Add refund to user's wallet
+      const user = await User.findById(order.user._id);
+      if (user) {
+        user.balance = (user.balance || 0) + refundAmount;
+        await user.save();
+
+        // Record refund transaction
+        try {
+          const { recordRefund } = require("./transaction");
+          await recordRefund(order, refundAmount);
+        } catch (txnError) {
+          console.error("Failed to record refund transaction:", txnError);
+        }
+
+        // Send return completed email notification
+        try {
+          const { sendEmail } = require("../middlewares/email/emailService");
+          const {
+            Return_Completed_Template,
+          } = require("../middlewares/email/templates");
+
+          const emailContent = Return_Completed_Template.replace(
+            /{name}/g,
+            user.name || "Customer"
+          )
+            .replace(/{refundAmount}/g, refundAmount.toFixed(2))
+            .replace(/{orderNumber}/g, order.orderNumber)
+            .replace(
+              /{returnDate}/g,
+              new Date(order.returnRequest.requestedAt).toLocaleDateString()
+            )
+            .replace(/{completedDate}/g, new Date().toLocaleDateString())
+            .replace(/{newBalance}/g, user.balance.toFixed(2));
+
+          await sendEmail(
+            user.email,
+            "Return Completed - Refund Processed | Opulence",
+            emailContent
+          );
+        } catch (emailError) {
+          console.error("Failed to send return completed email:", emailError);
+        }
+      }
+
+      // Restore product stock
+      for (const item of order.items) {
+        await Product.findByIdAndUpdate(item.product, {
+          $inc: { inStock: item.quantity },
+        });
+      }
+    }
+
+    // If rejected, revert order status back to delivered
+    if (status === "rejected") {
+      order.orderStatus = "delivered";
+    }
+
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Return status updated to ${status}`,
+      order,
+    });
+  } catch (error) {
+    console.error("Error updating return status:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update return status",
     });
   }
 };

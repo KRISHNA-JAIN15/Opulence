@@ -121,6 +121,7 @@ const createProduct = async (req, res) => {
       description,
       price,
       costPrice,
+      returnDays,
       inStock,
       category,
       brand,
@@ -176,6 +177,7 @@ const createProduct = async (req, res) => {
       description,
       price: Number(price),
       costPrice: Number(costPrice) || 0,
+      returnDays: Number(returnDays) || 0,
       inStock: Number(inStock) || 0,
       category,
       brand,
@@ -232,6 +234,7 @@ const updateProduct = async (req, res) => {
       description,
       price,
       costPrice,
+      returnDays,
       inStock,
       category,
       brand,
@@ -263,6 +266,7 @@ const updateProduct = async (req, res) => {
     if (description) product.description = description;
     if (price !== undefined) product.price = Number(price);
     if (costPrice !== undefined) product.costPrice = Number(costPrice);
+    if (returnDays !== undefined) product.returnDays = Number(returnDays);
     if (inStock !== undefined) product.inStock = Number(inStock);
     if (category) product.category = category;
     if (brand !== undefined) product.brand = brand;

@@ -197,6 +197,36 @@ const AdminOrders = () => {
       label: "Returned",
       color: "bg-gray-100 text-gray-800",
     },
+    {
+      value: "return_pending",
+      label: "Return Pending",
+      color: "bg-amber-100 text-amber-800",
+    },
+    {
+      value: "return_approved",
+      label: "Return Approved",
+      color: "bg-cyan-100 text-cyan-800",
+    },
+    {
+      value: "return_in_transit",
+      label: "Return In Transit",
+      color: "bg-violet-100 text-violet-800",
+    },
+    {
+      value: "return_received",
+      label: "Return Received",
+      color: "bg-teal-100 text-teal-800",
+    },
+    {
+      value: "return_completed",
+      label: "Return Completed",
+      color: "bg-emerald-100 text-emerald-800",
+    },
+    {
+      value: "return_rejected",
+      label: "Return Rejected",
+      color: "bg-rose-100 text-rose-800",
+    },
   ];
 
   const getStatusColor = (status) => {
@@ -289,6 +319,61 @@ const AdminOrders = () => {
         status: statusFilter,
       })
     );
+  };
+
+  const handleReturnStatusUpdate = async (orderId, status) => {
+    try {
+      const endpoint = `http://localhost:3000/api/orders/admin/${orderId}/return-status`;
+      const method = "PUT";
+      let body = { status };
+
+      // Add admin notes for rejected status
+      if (status === "rejected") {
+        body.adminNotes = "Return request rejected";
+      }
+
+      const response = await fetch(endpoint, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to update return status");
+      }
+
+      setNotification({
+        show: true,
+        type: "success",
+        message: `Return ${
+          status === "completed"
+            ? "completed and refund processed"
+            : status === "rejected"
+            ? "rejected"
+            : `marked as ${status.replace("_", " ")}`
+        }`,
+      });
+
+      // Refresh orders
+      dispatch(
+        getAllOrders({
+          page: adminPagination.page,
+          limit: 20,
+          status: statusFilter,
+        })
+      );
+    } catch (error) {
+      setNotification({
+        show: true,
+        type: "error",
+        message: error.message || "Failed to update return status",
+      });
+    }
   };
 
   const handlePageChange = (page) => {
@@ -616,6 +701,159 @@ const AdminOrders = () => {
                               )}
                             </div>
                           ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Return Request Info */}
+                    {order.returnRequest?.isRequested && (
+                      <div className="mt-6 pt-6 border-t border-gray-200">
+                        <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                          <RefreshCw size={16} className="text-orange-500" />
+                          Return Request
+                        </h4>
+                        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                          <div className="grid md:grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <p className="text-gray-600">
+                                <span className="font-medium">Status:</span>{" "}
+                                <span
+                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                    order.returnRequest.status === "completed"
+                                      ? "bg-green-100 text-green-800"
+                                      : order.returnRequest.status ===
+                                        "rejected"
+                                      ? "bg-red-100 text-red-800"
+                                      : order.returnRequest.status ===
+                                        "received"
+                                      ? "bg-blue-100 text-blue-800"
+                                      : "bg-orange-100 text-orange-800"
+                                  }`}
+                                >
+                                  {order.returnRequest.status
+                                    ?.charAt(0)
+                                    .toUpperCase() +
+                                    order.returnRequest.status?.slice(1)}
+                                </span>
+                              </p>
+                              <p className="text-gray-600 mt-1">
+                                <span className="font-medium">Requested:</span>{" "}
+                                {new Date(
+                                  order.returnRequest.requestedAt
+                                ).toLocaleDateString("en-IN", {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                })}
+                              </p>
+                              <p className="text-gray-600 mt-1">
+                                <span className="font-medium">Reason:</span>{" "}
+                                {order.returnRequest.reason ||
+                                  "No reason provided"}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-gray-600">
+                                <span className="font-medium">
+                                  Refund Amount:
+                                </span>{" "}
+                                ₹
+                                {order.returnRequest.refundAmount?.toFixed(2) ||
+                                  order.pricing?.total?.toFixed(2)}
+                              </p>
+                              {order.returnRequest.estimatedPickup && (
+                                <p className="text-gray-600 mt-1">
+                                  <span className="font-medium">
+                                    Est. Pickup:
+                                  </span>{" "}
+                                  {new Date(
+                                    order.returnRequest.estimatedPickup
+                                  ).toLocaleDateString("en-IN")}
+                                </p>
+                              )}
+                              {order.returnRequest.receivedAt && (
+                                <p className="text-gray-600 mt-1">
+                                  <span className="font-medium">Received:</span>{" "}
+                                  {new Date(
+                                    order.returnRequest.receivedAt
+                                  ).toLocaleDateString("en-IN")}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Return Action Buttons */}
+                          {order.returnRequest.status !== "completed" &&
+                            order.returnRequest.status !== "rejected" && (
+                              <div className="mt-4 pt-4 border-t border-orange-200 flex flex-wrap gap-2">
+                                {order.returnRequest.status === "pending" && (
+                                  <>
+                                    <button
+                                      onClick={() =>
+                                        handleReturnStatusUpdate(
+                                          order._id,
+                                          "approved"
+                                        )
+                                      }
+                                      className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+                                    >
+                                      Approve Return
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        handleReturnStatusUpdate(
+                                          order._id,
+                                          "rejected"
+                                        )
+                                      }
+                                      className="px-3 py-1.5 text-xs bg-red-600 text-white rounded-md hover:bg-red-700 transition"
+                                    >
+                                      Reject Return
+                                    </button>
+                                  </>
+                                )}
+                                {order.returnRequest.status === "approved" && (
+                                  <button
+                                    onClick={() =>
+                                      handleReturnStatusUpdate(
+                                        order._id,
+                                        "in_transit"
+                                      )
+                                    }
+                                    className="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition"
+                                  >
+                                    Mark In Transit
+                                  </button>
+                                )}
+                                {order.returnRequest.status ===
+                                  "in_transit" && (
+                                  <button
+                                    onClick={() =>
+                                      handleReturnStatusUpdate(
+                                        order._id,
+                                        "received"
+                                      )
+                                    }
+                                    className="px-3 py-1.5 text-xs bg-purple-600 text-white rounded-md hover:bg-purple-700 transition"
+                                  >
+                                    Mark Received
+                                  </button>
+                                )}
+                                {order.returnRequest.status === "received" && (
+                                  <button
+                                    onClick={() =>
+                                      handleReturnStatusUpdate(
+                                        order._id,
+                                        "completed"
+                                      )
+                                    }
+                                    className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-md hover:bg-green-700 transition"
+                                  >
+                                    Complete & Refund
+                                  </button>
+                                )}
+                              </div>
+                            )}
                         </div>
                       </div>
                     )}

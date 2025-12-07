@@ -298,6 +298,11 @@ const orderSlice = createSlice({
       state.adminOrders = action.payload.orders;
       state.adminPagination = action.payload.pagination;
     },
+    syncUserOrders: (state, action) => {
+      // Silent update without loading states - used for auto-refresh on user orders page
+      state.orders = action.payload.orders;
+      state.pagination = action.payload.pagination;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -457,6 +462,10 @@ const orderSlice = createSlice({
   },
 });
 
-export const { resetOrderState, clearCurrentOrder, syncAdminOrders } =
-  orderSlice.actions;
+export const {
+  resetOrderState,
+  clearCurrentOrder,
+  syncAdminOrders,
+  syncUserOrders,
+} = orderSlice.actions;
 export default orderSlice.reducer;

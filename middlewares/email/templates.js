@@ -433,9 +433,184 @@ const Coupon_Promo_Template = `
 </html>
 `;
 
+const Return_Completed_Template = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Return Completed - Refund Processed</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            margin: 30px auto;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            border: 1px solid #ddd;
+        }
+        .header {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            font-size: 26px;
+            font-weight: bold;
+        }
+        .header-subtitle {
+            font-size: 16px;
+            font-weight: normal;
+            margin-top: 10px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px;
+            color: #333;
+            line-height: 1.8;
+        }
+        .refund-box {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 25px 0;
+            text-align: center;
+            color: white;
+        }
+        .refund-amount {
+            font-size: 42px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .refund-label {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            opacity: 0.9;
+        }
+        .order-details {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        .detail-label {
+            color: #666;
+            font-weight: 500;
+        }
+        .detail-value {
+            color: #333;
+            font-weight: 600;
+        }
+        .wallet-info {
+            background: #e0f2fe;
+            border: 1px solid #0ea5e9;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .wallet-info p {
+            margin: 0;
+            color: #0369a1;
+            font-weight: 500;
+        }
+        .shop-button {
+            display: inline-block;
+            padding: 15px 40px;
+            margin: 20px 0;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            text-align: center;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .footer {
+            background-color: #f4f4f4;
+            padding: 20px;
+            text-align: center;
+            color: #777;
+            font-size: 12px;
+            border-top: 1px solid #ddd;
+        }
+        p {
+            margin: 0 0 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            ✅ Return Completed Successfully!
+            <div class="header-subtitle">Your refund has been processed</div>
+        </div>
+        <div class="content">
+            <p>Hello {name},</p>
+            <p>Great news! Your return request has been successfully processed and the refund has been added to your wallet.</p>
+            
+            <div class="refund-box">
+                <div class="refund-label">Refund Amount</div>
+                <div class="refund-amount">₹{refundAmount}</div>
+            </div>
+            
+            <div class="order-details">
+                <div class="detail-row">
+                    <span class="detail-label">Order Number</span>
+                    <span class="detail-value">{orderNumber}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Return Initiated</span>
+                    <span class="detail-value">{returnDate}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Completed On</span>
+                    <span class="detail-value">{completedDate}</span>
+                </div>
+            </div>
+            
+            <div class="wallet-info">
+                <p>💳 The refund of ₹{refundAmount} has been credited to your Opulence Wallet.</p>
+                <p style="margin-top: 10px; font-size: 14px;">Your new wallet balance: ₹{newBalance}</p>
+            </div>
+            
+            <p>You can use your wallet balance for future purchases on Opulence.</p>
+            
+            <div style="text-align: center;">
+                <a href="http://localhost:5173/products" class="shop-button">Continue Shopping →</a>
+            </div>
+            
+            <p style="font-size: 14px; color: #666;">Thank you for shopping with Opulence. We hope to serve you again soon!</p>
+        </div>
+        <div class="footer">
+            <p>If you have any questions, please contact our support team.</p>
+            <p>&copy; ${new Date().getFullYear()} Opulence. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+`;
+
 module.exports = {
   Verification_Email_Template,
   Welcome_Email_Template,
   Password_Reset_Template,
   Coupon_Promo_Template,
+  Return_Completed_Template,
 };

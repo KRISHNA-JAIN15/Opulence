@@ -195,7 +195,7 @@ const Cart = () => {
                                   {item.name}
                                 </Link>
                               </h3>
-                              <p className="text-sm text-gray-500 mt-1 line-clamp-2">
+                              <p className="text-sm text-gray-500 mt-1 line-clamp-2 break-words max-w-md">
                                 {item.description}
                               </p>
                               <div className="mt-2">

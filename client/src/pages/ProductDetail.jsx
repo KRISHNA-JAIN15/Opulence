@@ -402,8 +402,14 @@ const ProductDetail = () => {
               <div className="flex items-center space-x-3">
                 <RotateCcw size={24} className="text-gray-600" />
                 <div>
-                  <div className="font-semibold text-sm">Easy Returns</div>
-                  <div className="text-xs text-gray-600">30 Day Policy</div>
+                  <div className="font-semibold text-sm">
+                    {product.returnDays > 0 ? "Easy Returns" : "No Returns"}
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    {product.returnDays > 0
+                      ? `${product.returnDays} Day Policy`
+                      : "Non-returnable"}
+                  </div>
                 </div>
               </div>
               <div className="flex items-center space-x-3">

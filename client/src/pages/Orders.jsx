@@ -11,12 +11,18 @@ import {
   XCircle,
 } from "lucide-react";
 import { getUserOrders } from "../store/orderSlice";
+import { useOrdersListSync } from "../hooks/useOrderSync";
+import { useToast } from "../components/Toast";
 
 const Orders = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const toast = useToast();
   const { orders, isLoading, pagination } = useSelector((state) => state.order);
   const { token } = useSelector((state) => state.auth);
+
+  // Sync orders in real-time (every 5 seconds)
+  useOrdersListSync(toast, 1, 10);
 
   useEffect(() => {
     if (!token) {

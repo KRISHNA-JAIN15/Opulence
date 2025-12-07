@@ -21,6 +21,7 @@ const AddProduct = () => {
       description: "",
       price: "",
       costPrice: "",
+      returnDays: 0,
       inStock: "",
       category: "",
       brand: "",
@@ -83,6 +84,7 @@ const AddProduct = () => {
       formData.append("description", data.description);
       formData.append("price", data.price);
       formData.append("costPrice", data.costPrice || 0);
+      formData.append("returnDays", data.returnDays || 0);
       formData.append("inStock", data.inStock);
       formData.append("category", data.category);
       formData.append("brand", data.brand || "");
@@ -485,6 +487,28 @@ const AddProduct = () => {
                   placeholder="e.g., Made in Europe"
                 />
               </div>
+            </div>
+
+            {/* Return Policy */}
+            <div>
+              <label className="block text-sm font-bold text-gray-800 mb-2">
+                Return Window (Days)
+                <span className="text-gray-500 text-sm font-normal ml-2">
+                  (0 = Non-returnable)
+                </span>
+              </label>
+              <input
+                type="number"
+                {...register("returnDays", { min: 0, max: 365 })}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition"
+                placeholder="e.g., 7 for 7-day return policy"
+                min="0"
+                max="365"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Enter the number of days customers can return this product after
+                delivery. Enter 0 if product is non-returnable.
+              </p>
             </div>
 
             {/* Tags */}

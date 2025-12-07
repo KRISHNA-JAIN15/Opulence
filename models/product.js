@@ -21,6 +21,12 @@ const productSchema = new mongoose.Schema(
       default: 0,
       min: [0, "Cost price cannot be negative"],
     },
+    returnDays: {
+      type: Number,
+      default: 0,
+      min: [0, "Return days cannot be negative"],
+      max: [365, "Return days cannot exceed 365"],
+    },
     inStock: {
       type: Number,
       required: true,

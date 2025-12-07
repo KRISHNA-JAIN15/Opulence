@@ -14,6 +14,7 @@ import {
   AlertCircle,
   Copy,
   ExternalLink,
+  RotateCcw,
 } from "lucide-react";
 import {
   getOrderById,
@@ -42,6 +43,9 @@ const OrderTracking = () => {
   const [cancelReason, setCancelReason] = useState("");
   const [copied, setCopied] = useState(false);
   const [liveOrder, setLiveOrder] = useState(null);
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const [returnReason, setReturnReason] = useState("");
+  const [isReturning, setIsReturning] = useState(false);
 
   // Use order sync hook for real-time updates
   const { syncOrder } = useOrderSync(orderId, toast);
@@ -189,6 +193,83 @@ const OrderTracking = () => {
     return !nonCancellable.includes(displayOrder?.orderStatus);
   };
 
+  // Check if order is eligible for return
+  const canReturn = () => {
+    if (displayOrder?.orderStatus !== "delivered") return false;
+    if (displayOrder?.returnRequest?.isRequested) return false;
+
+    // Check if any item has return days > 0
+    const maxReturnDays = Math.max(
+      ...(displayOrder?.items?.map((item) => item.returnDays || 0) || [0])
+    );
+    if (maxReturnDays === 0) return false;
+
+    // Check if within return window
+    const deliveredAt =
+      displayOrder?.deliveredAt ||
+      displayOrder?.statusHistory?.find((s) => s.status === "delivered")
+        ?.timestamp;
+    if (!deliveredAt) return false;
+
+    const daysSinceDelivery = Math.floor(
+      (Date.now() - new Date(deliveredAt)) / (1000 * 60 * 60 * 24)
+    );
+    return daysSinceDelivery <= maxReturnDays;
+  };
+
+  const getDaysLeftForReturn = () => {
+    const maxReturnDays = Math.max(
+      ...(displayOrder?.items?.map((item) => item.returnDays || 0) || [0])
+    );
+    const deliveredAt =
+      displayOrder?.deliveredAt ||
+      displayOrder?.statusHistory?.find((s) => s.status === "delivered")
+        ?.timestamp;
+    if (!deliveredAt) return 0;
+
+    const daysSinceDelivery = Math.floor(
+      (Date.now() - new Date(deliveredAt)) / (1000 * 60 * 60 * 24)
+    );
+    return Math.max(0, maxReturnDays - daysSinceDelivery);
+  };
+
+  const handleInitiateReturn = async () => {
+    setIsReturning(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `http://localhost:3000/api/orders/${orderId}/return`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ reason: returnReason }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success(
+          "Return request initiated! Expected pickup in 3-5 business days."
+        );
+        setShowReturnModal(false);
+        setReturnReason("");
+        // Refresh order
+        dispatch(getOrderById(orderId));
+      } else {
+        toast.error(result.message || "Failed to initiate return");
+      }
+    } catch (error) {
+      console.error("Failed to initiate return:", error);
+      toast.error("Failed to initiate return");
+    } finally {
+      setIsReturning(false);
+    }
+  };
+
   // Show loading state if loading OR if we don't have data yet and no error
   if (isLoading || (!displayOrder && !isError)) {
     return (
@@ -265,6 +346,19 @@ const OrderTracking = () => {
                 >
                   Cancel Order
                 </button>
+              ) : canReturn() ? (
+                <button
+                  onClick={() => setShowReturnModal(true)}
+                  className="inline-flex items-center gap-1 text-orange-600 hover:text-orange-700 text-sm font-medium"
+                >
+                  <RotateCcw size={14} />
+                  Return Order ({getDaysLeftForReturn()} days left)
+                </button>
+              ) : displayOrder.returnRequest?.isRequested ? (
+                <span className="inline-flex items-center gap-1 text-sm text-orange-600">
+                  <RotateCcw size={14} />
+                  Return {displayOrder.returnRequest.status}
+                </span>
               ) : (
                 displayOrder.orderStatus !== "cancelled" &&
                 displayOrder.orderStatus !== "delivered" &&
@@ -653,6 +747,85 @@ const OrderTracking = () => {
                 className="flex-1 bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition-colors"
               >
                 Cancel Order
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Return Order Modal */}
+      {showReturnModal && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white/95 backdrop-blur-md rounded-lg max-w-md w-full mx-4 p-6 shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-orange-100 rounded-full">
+                <RotateCcw className="w-5 h-5 text-orange-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Return Order
+              </h3>
+            </div>
+
+            <p className="text-gray-600 mb-4">
+              You have <strong>{getDaysLeftForReturn()} days</strong> left to
+              return this order.
+            </p>
+
+            {/* Return Process Info */}
+            <div className="bg-orange-50 border border-orange-200 rounded-md p-3 mb-4">
+              <p className="text-sm text-orange-800 mb-2">
+                <strong>Return Process:</strong>
+              </p>
+              <ul className="text-sm text-orange-700 space-y-1 ml-4 list-disc">
+                <li>Pickup will be scheduled in 3-5 business days</li>
+                <li>Once received, refund will be processed to your wallet</li>
+                <li>
+                  Amount: ₹{displayOrder?.pricing?.total?.toFixed(2) || "0.00"}
+                </li>
+              </ul>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Reason for return
+              </label>
+              <select
+                value={returnReason}
+                onChange={(e) => setReturnReason(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent mb-2"
+              >
+                <option value="">Select a reason</option>
+                <option value="Product damaged">Product damaged</option>
+                <option value="Wrong product delivered">
+                  Wrong product delivered
+                </option>
+                <option value="Product not as described">
+                  Product not as described
+                </option>
+                <option value="Quality not satisfactory">
+                  Quality not satisfactory
+                </option>
+                <option value="Changed my mind">Changed my mind</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowReturnModal(false);
+                  setReturnReason("");
+                }}
+                className="flex-1 border border-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleInitiateReturn}
+                disabled={isReturning || !returnReason}
+                className="flex-1 bg-orange-600 text-white py-2 px-4 rounded-md hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isReturning ? "Processing..." : "Initiate Return"}
               </button>
             </div>
           </div>

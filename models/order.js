@@ -23,6 +23,14 @@ const orderItemSchema = new Schema({
   image: {
     type: String,
   },
+  returnDays: {
+    type: Number,
+    default: 0,
+  },
+  costPrice: {
+    type: Number,
+    default: 0,
+  },
 });
 
 const orderSchema = new Schema(
@@ -100,6 +108,29 @@ const orderSchema = new Schema(
     deliveredAt: { type: Date },
     cancelledAt: { type: Date },
     cancellationReason: { type: String },
+    // Return related fields
+    returnRequest: {
+      isRequested: { type: Boolean, default: false },
+      requestedAt: { type: Date },
+      reason: { type: String },
+      status: {
+        type: String,
+        enum: [
+          "pending",
+          "approved",
+          "in_transit",
+          "received",
+          "completed",
+          "rejected",
+        ],
+        default: "pending",
+      },
+      estimatedPickup: { type: Date },
+      receivedAt: { type: Date },
+      completedAt: { type: Date },
+      refundAmount: { type: Number },
+      adminNotes: { type: String },
+    },
   },
   { timestamps: true }
 );

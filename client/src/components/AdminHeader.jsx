@@ -13,6 +13,7 @@ import {
   ShoppingCart,
   Tag,
   ChevronDown,
+  Receipt,
 } from "lucide-react";
 
 const AdminHeader = () => {
@@ -111,11 +112,21 @@ const AdminHeader = () => {
                         to="/admin/users"
                         onClick={() => setShowSettingsDropdown(false)}
                         state={{ openCouponModal: true }}
-                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-blue-50 transition-colors text-left"
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-blue-50 transition-colors text-left border-b border-gray-100"
                       >
                         <Tag size={18} className="text-purple-600" />
                         <span className="font-medium text-gray-700">
                           Coupons
+                        </span>
+                      </Link>
+                      <Link
+                        to="/admin/transactions"
+                        onClick={() => setShowSettingsDropdown(false)}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-blue-50 transition-colors text-left"
+                      >
+                        <Receipt size={18} className="text-green-600" />
+                        <span className="font-medium text-gray-700">
+                          Transactions
                         </span>
                       </Link>
                     </div>

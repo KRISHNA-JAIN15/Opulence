@@ -120,6 +120,7 @@ const createProduct = async (req, res) => {
       name,
       description,
       price,
+      costPrice,
       inStock,
       category,
       brand,
@@ -174,6 +175,7 @@ const createProduct = async (req, res) => {
       name,
       description,
       price: Number(price),
+      costPrice: Number(costPrice) || 0,
       inStock: Number(inStock) || 0,
       category,
       brand,
@@ -195,6 +197,16 @@ const createProduct = async (req, res) => {
       images: imageUploads,
       createdBy: req.user._id,
     });
+
+    // Record inventory transaction if stock is added
+    if (Number(inStock) > 0 && Number(costPrice) > 0) {
+      const { recordInventoryAdd } = require("./transaction");
+      try {
+        await recordInventoryAdd(product, Number(inStock), Number(costPrice));
+      } catch (txnError) {
+        console.error("Failed to record inventory transaction:", txnError);
+      }
+    }
 
     res.status(201).json({
       success: true,
@@ -219,6 +231,7 @@ const updateProduct = async (req, res) => {
       name,
       description,
       price,
+      costPrice,
       inStock,
       category,
       brand,
@@ -249,6 +262,7 @@ const updateProduct = async (req, res) => {
     if (name) product.name = name;
     if (description) product.description = description;
     if (price !== undefined) product.price = Number(price);
+    if (costPrice !== undefined) product.costPrice = Number(costPrice);
     if (inStock !== undefined) product.inStock = Number(inStock);
     if (category) product.category = category;
     if (brand !== undefined) product.brand = brand;
@@ -373,10 +387,14 @@ const updateProductQuantity = async (req, res) => {
       });
     }
 
+    const previousStock = product.inStock;
+    let quantityAdded = 0;
+
     // Update quantity based on operation
     switch (operation) {
       case "add":
         product.inStock += Number(quantity);
+        quantityAdded = Number(quantity);
         break;
       case "subtract":
         product.inStock -= Number(quantity);
@@ -389,12 +407,23 @@ const updateProductQuantity = async (req, res) => {
         break;
       case "set":
       default:
+        quantityAdded = Number(quantity) - previousStock;
         product.inStock = Number(quantity);
         break;
     }
 
     product.updatedBy = req.user._id;
     await product.save();
+
+    // Record inventory transaction if stock was added
+    if (quantityAdded > 0 && product.costPrice > 0) {
+      const { recordInventoryAdd } = require("./transaction");
+      try {
+        await recordInventoryAdd(product, quantityAdded, product.costPrice);
+      } catch (txnError) {
+        console.error("Failed to record inventory transaction:", txnError);
+      }
+    }
 
     res.status(200).json({
       success: true,

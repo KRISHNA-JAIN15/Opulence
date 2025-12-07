@@ -211,6 +211,14 @@ exports.verifyPaymentAndCreateOrder = async (req, res) => {
       });
     }
 
+    // Record sale transactions
+    try {
+      const { recordSaleFromOrder } = require("./transaction");
+      await recordSaleFromOrder(order);
+    } catch (txnError) {
+      console.error("Failed to record sale transactions:", txnError);
+    }
+
     res.status(201).json({
       success: true,
       message: "Order placed successfully",
@@ -373,6 +381,14 @@ exports.createWalletOrder = async (req, res) => {
       await Product.findByIdAndUpdate(item.productId, {
         $inc: { inStock: -item.quantity },
       });
+    }
+
+    // Record sale transactions
+    try {
+      const { recordSaleFromOrder } = require("./transaction");
+      await recordSaleFromOrder(order);
+    } catch (txnError) {
+      console.error("Failed to record sale transactions:", txnError);
     }
 
     res.status(201).json({

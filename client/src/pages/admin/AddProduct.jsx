@@ -20,6 +20,7 @@ const AddProduct = () => {
       name: "",
       description: "",
       price: "",
+      costPrice: "",
       inStock: "",
       category: "",
       brand: "",
@@ -81,6 +82,7 @@ const AddProduct = () => {
       formData.append("name", data.name);
       formData.append("description", data.description);
       formData.append("price", data.price);
+      formData.append("costPrice", data.costPrice || 0);
       formData.append("inStock", data.inStock);
       formData.append("category", data.category);
       formData.append("brand", data.brand || "");
@@ -227,7 +229,7 @@ const AddProduct = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-bold text-gray-800 mb-2">
-                  Price (€) *
+                  Selling Price (₹) *
                 </label>
                 <input
                   type="number"
@@ -250,6 +252,36 @@ const AddProduct = () => {
                 )}
               </div>
 
+              <div>
+                <label className="block text-sm font-bold text-gray-800 mb-2">
+                  Cost Price (₹)
+                  <span className="text-gray-500 text-xs font-normal ml-1">
+                    (Purchase price)
+                  </span>
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  {...register("costPrice", {
+                    min: {
+                      value: 0,
+                      message: "Cost price cannot be negative",
+                    },
+                  })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition"
+                  placeholder="0.00"
+                />
+                {errors.costPrice && (
+                  <p className="text-red-600 text-sm mt-1">
+                    {errors.costPrice.message}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Discount */}
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-bold text-gray-800 mb-2">
                   Discount (%)

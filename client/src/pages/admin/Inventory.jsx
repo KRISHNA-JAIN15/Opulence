@@ -298,7 +298,7 @@ const AdminInventory = () => {
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+        {/* <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">
@@ -312,7 +312,7 @@ const AdminInventory = () => {
               <DollarSign className="w-5 h-5" />
             </div>
           </div>
-        </div>
+        </div> */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
           <div className="flex items-center justify-between">
             <div>

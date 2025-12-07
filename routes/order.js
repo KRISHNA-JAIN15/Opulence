@@ -5,6 +5,7 @@ const {
   getRazorpayKey,
   createRazorpayOrder,
   verifyPaymentAndCreateOrder,
+  createWalletOrder,
   getUserOrders,
   getOrderById,
   getOrderByNumber,
@@ -19,6 +20,7 @@ const {
 router.get("/payment/key", authenticateToken, getRazorpayKey);
 router.post("/payment/create", authenticateToken, createRazorpayOrder);
 router.post("/payment/verify", authenticateToken, verifyPaymentAndCreateOrder);
+router.post("/payment/wallet", authenticateToken, createWalletOrder);
 
 // User order routes
 router.get("/my-orders", authenticateToken, getUserOrders);

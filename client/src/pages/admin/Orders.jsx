@@ -337,7 +337,7 @@ const AdminOrders = () => {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {newOrderCount > 0 && (
+            {/* {newOrderCount > 0 && (
               <div className="flex items-center gap-2 bg-green-100 text-green-800 px-4 py-2 rounded-lg">
                 <span className="font-semibold">
                   {newOrderCount} new order{newOrderCount > 1 ? "s" : ""}
@@ -349,7 +349,7 @@ const AdminOrders = () => {
                   <X size={16} />
                 </button>
               </div>
-            )}
+            )} */}
             <div className="flex items-center gap-2 text-sm text-gray-500">
               <RefreshCw size={16} className="animate-spin-slow" />
               <span>Auto-refreshing</span>

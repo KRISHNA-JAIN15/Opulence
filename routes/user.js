@@ -35,8 +35,17 @@ router.get("/profile", authenticateToken, (req, res) => {
       email: req.user.email,
       type: req.user.type,
       isVerified: req.user.isVerified,
+      balance: req.user.balance || 0,
       createdAt: req.user.createdAt,
     },
+  });
+});
+
+// Get user balance
+router.get("/balance", authenticateToken, (req, res) => {
+  res.json({
+    success: true,
+    balance: req.user.balance || 0,
   });
 });
 

@@ -8,13 +8,16 @@ import {
   CheckCircle,
   MapPin,
   Package,
+  Wallet,
 } from "lucide-react";
 import { clearCart, syncCartPrices } from "../store/cartSlice";
 import { getProfile } from "../store/profileSlice";
+import { getBalance } from "../store/authSlice";
 import {
   getRazorpayKey,
   createRazorpayOrder,
   verifyPaymentAndCreateOrder,
+  createWalletOrder,
   resetOrderState,
 } from "../store/orderSlice";
 
@@ -25,7 +28,7 @@ const Checkout = () => {
     (state) => state.cart
   );
   const { profile } = useSelector((state) => state.profile);
-  const { user, token } = useSelector((state) => state.auth);
+  const { user, token, balance } = useSelector((state) => state.auth);
   const {
     razorpayKey,
     isPaymentLoading,
@@ -37,6 +40,7 @@ const Checkout = () => {
 
   const [selectedAddressId, setSelectedAddressId] = useState(null);
   const [useNewAddress, setUseNewAddress] = useState(false);
+  const [useWallet, setUseWallet] = useState(false);
 
   const [formData, setFormData] = useState({
     // Shipping Information
@@ -73,6 +77,7 @@ const Checkout = () => {
     if (user && token) {
       dispatch(getProfile());
       dispatch(getRazorpayKey());
+      dispatch(getBalance());
     }
   }, [dispatch, user, token]);
 
@@ -122,15 +127,26 @@ const Checkout = () => {
   }, [isError, message, dispatch]);
 
   // Redirect to login if not authenticated
-  if (!token) {
-    navigate("/login?redirect=checkout");
-    return null;
-  }
+  useEffect(() => {
+    if (!token) {
+      navigate("/login?redirect=checkout");
+    }
+  }, [token, navigate]);
 
   // Redirect to cart if empty
-  if (cartItems.length === 0 && !orderComplete) {
-    navigate("/cart");
-    return null;
+  useEffect(() => {
+    if (cartItems.length === 0 && !orderComplete) {
+      navigate("/cart");
+    }
+  }, [cartItems.length, orderComplete, navigate]);
+
+  // Show loading while redirecting
+  if (!token || (cartItems.length === 0 && !orderComplete)) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+      </div>
+    );
   }
 
   const calculateDiscountedPrice = (price, discount) => {
@@ -140,7 +156,13 @@ const Checkout = () => {
   const subtotal = cartTotal;
   const tax = subtotal * 0.08;
   const shipping = 0; // Free shipping
-  const total = subtotal + tax + shipping;
+  const totalBeforeWallet = subtotal + tax + shipping;
+  
+  // Calculate wallet amount to use
+  const walletBalance = balance || 0;
+  const walletAmountToUse = useWallet ? Math.min(walletBalance, totalBeforeWallet) : 0;
+  const total = totalBeforeWallet - walletAmountToUse;
+  const isFullWalletPayment = useWallet && walletAmountToUse >= totalBeforeWallet;
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -227,27 +249,6 @@ const Checkout = () => {
     setErrors({});
 
     try {
-      // Load Razorpay script
-      const scriptLoaded = await loadRazorpayScript();
-      if (!scriptLoaded) {
-        setErrors({
-          submit: "Failed to load payment gateway. Please try again.",
-        });
-        setIsProcessing(false);
-        return;
-      }
-
-      // Create Razorpay order
-      const orderResult = await dispatch(createRazorpayOrder(total)).unwrap();
-
-      if (!orderResult.orderId) {
-        setErrors({
-          submit: "Failed to create payment order. Please try again.",
-        });
-        setIsProcessing(false);
-        return;
-      }
-
       // Get shipping address
       const selectedAddress = selectedAddressId
         ? profile.addresses.find((addr) => addr._id === selectedAddressId)
@@ -294,9 +295,40 @@ const Checkout = () => {
         subtotal,
         tax,
         shipping,
-        total,
+        total: totalBeforeWallet,
+        walletAmountUsed: walletAmountToUse,
         orderNotes: formData.orderNotes,
       };
+
+      // Case 1: Full wallet payment - no Razorpay needed
+      if (isFullWalletPayment) {
+        await dispatch(createWalletOrder(orderData)).unwrap();
+        dispatch(getBalance()); // Refresh balance
+        return;
+      }
+
+      // Case 2 & 3: Need Razorpay (partial wallet or no wallet)
+      // Load Razorpay script
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        setErrors({
+          submit: "Failed to load payment gateway. Please try again.",
+        });
+        setIsProcessing(false);
+        return;
+      }
+
+      // Create Razorpay order for the remaining amount after wallet
+      const amountToPay = total; // This is already totalBeforeWallet - walletAmountToUse
+      const orderResult = await dispatch(createRazorpayOrder(amountToPay)).unwrap();
+
+      if (!orderResult.orderId) {
+        setErrors({
+          submit: "Failed to create payment order. Please try again.",
+        });
+        setIsProcessing(false);
+        return;
+      }
 
       // Razorpay options
       const options = {
@@ -304,7 +336,9 @@ const Checkout = () => {
         amount: orderResult.amount,
         currency: orderResult.currency || "INR",
         name: "Opulence",
-        description: "Order Payment",
+        description: walletAmountToUse > 0 
+          ? `Order Payment (₹${walletAmountToUse.toFixed(2)} from wallet)` 
+          : "Order Payment",
         order_id: orderResult.orderId,
         handler: async function (response) {
           try {
@@ -317,6 +351,7 @@ const Checkout = () => {
                 orderData,
               })
             ).unwrap();
+            dispatch(getBalance()); // Refresh balance after order
           } catch (error) {
             setErrors({ submit: error || "Payment verification failed" });
             setIsProcessing(false);
@@ -772,10 +807,17 @@ const Checkout = () => {
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                       Processing...
                     </>
+                  ) : isFullWalletPayment ? (
+                    <>
+                      <Wallet size={20} />
+                      Pay with Wallet ₹{total.toFixed(2)}
+                    </>
                   ) : (
                     <>
-                      <Shield size={20} />
-                      Pay ₹{total.toFixed(2)}
+                      <CreditCard size={20} />
+                      {walletAmountToUse > 0 
+                        ? `Pay ₹${total.toFixed(2)} (+ ₹${walletAmountToUse.toFixed(2)} wallet)`
+                        : `Pay ₹${total.toFixed(2)}`}
                     </>
                   )}
                 </button>
@@ -851,10 +893,60 @@ const Checkout = () => {
                     <span className="text-gray-600">Tax (8%)</span>
                     <span className="font-medium">₹{tax.toFixed(2)}</span>
                   </div>
+
+                  {/* Wallet Balance Section */}
+                  {walletBalance > 0 && (
+                    <div className="border-t border-gray-200 pt-3 mt-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Wallet size={18} className="text-gray-600" />
+                          <span className="text-sm font-medium text-gray-700">Wallet Balance</span>
+                        </div>
+                        <span className="text-sm font-semibold text-green-600">₹{walletBalance.toFixed(2)}</span>
+                      </div>
+                      <label className="flex items-center gap-2 cursor-pointer bg-gray-50 p-3 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={useWallet}
+                          onChange={(e) => setUseWallet(e.target.checked)}
+                          className="rounded border-gray-300 text-black focus:ring-black"
+                        />
+                        <div className="flex-1">
+                          <span className="text-sm font-medium text-gray-900">
+                            Use Wallet Balance
+                          </span>
+                          {useWallet && (
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              {isFullWalletPayment 
+                                ? "Full payment from wallet" 
+                                : `₹${walletAmountToUse.toFixed(2)} from wallet, ₹${total.toFixed(2)} via Razorpay`}
+                            </p>
+                          )}
+                        </div>
+                      </label>
+                    </div>
+                  )}
+
+                  {/* Wallet Deduction */}
+                  {useWallet && walletAmountToUse > 0 && (
+                    <div className="flex justify-between text-sm text-green-600">
+                      <span>Wallet Deduction</span>
+                      <span className="font-medium">-₹{walletAmountToUse.toFixed(2)}</span>
+                    </div>
+                  )}
+
                   <div className="flex justify-between text-lg font-bold border-t border-gray-200 pt-3">
-                    <span>Total</span>
-                    <span>₹{total.toFixed(2)}</span>
+                    <span>{isFullWalletPayment ? "Pay from Wallet" : "Amount to Pay"}</span>
+                    <span className={isFullWalletPayment ? "text-green-600" : ""}>
+                      ₹{total.toFixed(2)}
+                    </span>
                   </div>
+
+                  {isFullWalletPayment && (
+                    <p className="text-xs text-green-600 text-center">
+                      ✓ Your wallet balance covers the full amount!
+                    </p>
+                  )}
                 </div>
 
                 {/* Security Features */}

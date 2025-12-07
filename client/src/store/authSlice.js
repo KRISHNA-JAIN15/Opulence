@@ -10,6 +10,7 @@ const token = localStorage.getItem("token");
 const initialState = {
   user: user ? user : null,
   token: token ? token : null,
+  balance: 0,
   isLoading: false,
   isSuccess: false,
   isError: false,
@@ -101,6 +102,27 @@ export const resendVerification = createAsyncThunk(
   }
 );
 
+// Get user balance
+export const getBalance = createAsyncThunk(
+  "auth/getBalance",
+  async (_, thunkAPI) => {
+    try {
+      const { auth } = thunkAPI.getState();
+      const config = {
+        headers: {
+          Authorization: `Bearer ${auth.token}`,
+        },
+      };
+      const response = await axios.get(`${API_URL}/balance`, config);
+      return response.data;
+    } catch (error) {
+      const message =
+        error.response?.data?.message || error.message || error.toString();
+      return thunkAPI.rejectWithValue(message);
+    }
+  }
+);
+
 // Logout user
 export const logout = createAsyncThunk("auth/logout", async () => {
   localStorage.removeItem("token");
@@ -119,6 +141,9 @@ export const authSlice = createSlice({
     },
     setVerificationEmail: (state, action) => {
       state.verificationEmail = action.payload;
+    },
+    updateBalance: (state, action) => {
+      state.balance = action.payload;
     },
   },
   extraReducers: (builder) => {
@@ -193,9 +218,14 @@ export const authSlice = createSlice({
       .addCase(logout.fulfilled, (state) => {
         state.user = null;
         state.token = null;
+        state.balance = 0;
+      })
+      // Get Balance
+      .addCase(getBalance.fulfilled, (state, action) => {
+        state.balance = action.payload.balance;
       });
   },
 });
 
-export const { reset, setVerificationEmail } = authSlice.actions;
+export const { reset, setVerificationEmail, updateBalance } = authSlice.actions;
 export default authSlice.reducer;

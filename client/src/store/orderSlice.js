@@ -76,6 +76,32 @@ export const verifyPaymentAndCreateOrder = createAsyncThunk(
   }
 );
 
+// Create Order with Wallet Payment (full wallet - no Razorpay)
+export const createWalletOrder = createAsyncThunk(
+  "order/createWalletOrder",
+  async (orderData, { getState, rejectWithValue }) => {
+    try {
+      const { auth } = getState();
+      const config = {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${auth.token}`,
+        },
+      };
+      const response = await axios.post(
+        `${API_URL}/orders/payment/wallet`,
+        { orderData },
+        config
+      );
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to create order"
+      );
+    }
+  }
+);
+
 // Get User Orders
 export const getUserOrders = createAsyncThunk(
   "order/getUserOrders",
@@ -312,6 +338,21 @@ const orderSlice = createSlice({
         state.message = "Order placed successfully!";
       })
       .addCase(verifyPaymentAndCreateOrder.rejected, (state, action) => {
+        state.isPaymentLoading = false;
+        state.isError = true;
+        state.message = action.payload;
+      })
+      // Create Wallet Order
+      .addCase(createWalletOrder.pending, (state) => {
+        state.isPaymentLoading = true;
+      })
+      .addCase(createWalletOrder.fulfilled, (state, action) => {
+        state.isPaymentLoading = false;
+        state.isSuccess = true;
+        state.currentOrder = action.payload.order;
+        state.message = "Order placed successfully using wallet!";
+      })
+      .addCase(createWalletOrder.rejected, (state, action) => {
         state.isPaymentLoading = false;
         state.isError = true;
         state.message = action.payload;

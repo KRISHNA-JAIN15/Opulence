@@ -1,5 +1,6 @@
 const Order = require("../models/order");
 const Product = require("../models/product");
+const User = require("../models/user");
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
 
@@ -151,6 +152,21 @@ exports.verifyPaymentAndCreateOrder = async (req, res) => {
       }
     }
 
+    // Handle wallet amount if used for partial payment
+    const walletAmountUsed = orderData.walletAmountUsed || 0;
+    if (walletAmountUsed > 0) {
+      const user = await User.findById(req.user._id);
+      if (!user || user.balance < walletAmountUsed) {
+        return res.status(400).json({
+          success: false,
+          message: "Insufficient wallet balance",
+        });
+      }
+      // Deduct wallet balance
+      user.balance -= walletAmountUsed;
+      await user.save();
+    }
+
     // Create order
     const order = new Order({
       user: req.user._id,
@@ -170,14 +186,16 @@ exports.verifyPaymentAndCreateOrder = async (req, res) => {
         razorpayOrderId: razorpay_order_id,
         razorpayPaymentId: razorpay_payment_id,
         razorpaySignature: razorpay_signature,
-        method: "razorpay",
+        method: walletAmountUsed > 0 ? "wallet+razorpay" : "razorpay",
         status: "completed",
+        walletAmountUsed: walletAmountUsed,
       },
       pricing: {
         subtotal: orderData.subtotal,
         tax: orderData.tax,
         shipping: orderData.shipping,
         discount: orderData.discount || 0,
+        walletUsed: walletAmountUsed,
         total: orderData.total,
       },
       orderStatus: "confirmed",
@@ -217,6 +235,162 @@ exports.verifyPaymentAndCreateOrder = async (req, res) => {
       success: false,
       message: error.message || "Failed to create order",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
+// Create Order with Wallet Payment (full wallet payment - no Razorpay needed)
+exports.createWalletOrder = async (req, res) => {
+  try {
+    const { orderData } = req.body;
+
+    // Validate order data
+    if (!orderData || !orderData.items || orderData.items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Order items are required",
+      });
+    }
+
+    if (!orderData.shippingAddress) {
+      return res.status(400).json({
+        success: false,
+        message: "Shipping address is required",
+      });
+    }
+
+    // Validate shipping address fields
+    const requiredAddressFields = [
+      "firstName",
+      "lastName",
+      "address",
+      "city",
+      "state",
+      "zipCode",
+      "country",
+    ];
+    for (const field of requiredAddressFields) {
+      if (!orderData.shippingAddress[field]) {
+        return res.status(400).json({
+          success: false,
+          message: `Shipping address ${field} is required`,
+        });
+      }
+    }
+
+    if (!orderData.email || !orderData.phone) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and phone are required",
+      });
+    }
+
+    const walletAmountUsed = orderData.walletAmountUsed || 0;
+    const totalAmount = orderData.total;
+
+    // Verify user has enough wallet balance
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    if (user.balance < walletAmountUsed) {
+      return res.status(400).json({
+        success: false,
+        message: "Insufficient wallet balance",
+      });
+    }
+
+    // For full wallet payment, wallet amount should cover total
+    if (walletAmountUsed < totalAmount) {
+      return res.status(400).json({
+        success: false,
+        message: "Wallet balance insufficient for full payment. Use Razorpay for partial payment.",
+      });
+    }
+
+    // Validate stock availability
+    for (const item of orderData.items) {
+      const product = await Product.findById(item.productId);
+      if (!product) {
+        return res.status(400).json({
+          success: false,
+          message: `Product ${item.name} not found`,
+        });
+      }
+      if (product.inStock < item.quantity) {
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient stock for ${item.name}`,
+        });
+      }
+    }
+
+    // Deduct wallet balance
+    user.balance -= walletAmountUsed;
+    await user.save();
+
+    // Create order
+    const order = new Order({
+      user: req.user._id,
+      items: orderData.items.map((item) => ({
+        product: item.productId,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        image: item.image,
+      })),
+      shippingAddress: orderData.shippingAddress,
+      contact: {
+        email: orderData.email,
+        phone: orderData.phone,
+      },
+      payment: {
+        method: "wallet",
+        status: "completed",
+        walletAmountUsed: walletAmountUsed,
+      },
+      pricing: {
+        subtotal: orderData.subtotal,
+        tax: orderData.tax,
+        shipping: orderData.shipping,
+        discount: orderData.discount || 0,
+        walletUsed: walletAmountUsed,
+        total: totalAmount,
+      },
+      orderStatus: "confirmed",
+      orderNotes: orderData.orderNotes,
+    });
+
+    await order.save();
+
+    // Update product stock
+    for (const item of orderData.items) {
+      await Product.findByIdAndUpdate(item.productId, {
+        $inc: { inStock: -item.quantity },
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      message: "Order placed successfully using wallet balance",
+      order: {
+        _id: order._id,
+        orderNumber: order.orderNumber,
+        total: order.pricing.total,
+        walletUsed: walletAmountUsed,
+        status: order.orderStatus,
+      },
+      newBalance: user.balance,
+    });
+  } catch (error) {
+    console.error("Error creating wallet order:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to create order",
     });
   }
 };
@@ -327,18 +501,12 @@ exports.cancelOrder = async (req, res) => {
       });
     }
 
-    // Only allow cancellation if order is not shipped or delivered
-    const nonCancellableStatuses = [
-      "shipped",
-      "out_for_delivery",
-      "delivered",
-      "cancelled",
-      "returned",
-    ];
-    if (nonCancellableStatuses.includes(order.orderStatus)) {
+    // Only allow cancellation if order is pending, confirmed, or processing
+    const cancellableStatuses = ["pending", "confirmed", "processing"];
+    if (!cancellableStatuses.includes(order.orderStatus)) {
       return res.status(400).json({
         success: false,
-        message: "Order cannot be cancelled at this stage",
+        message: "Order cannot be cancelled once it has been shipped",
       });
     }
 
@@ -355,10 +523,22 @@ exports.cancelOrder = async (req, res) => {
       });
     }
 
+    // Refund to user balance
+    const refundAmount = order.pricing.total;
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { $inc: { balance: refundAmount } },
+      { new: true }
+    );
+
     res.status(200).json({
       success: true,
-      message: "Order cancelled successfully",
+      message: `Order cancelled successfully. ₹${refundAmount.toFixed(
+        2
+      )} has been added to your wallet balance.`,
       order,
+      refundAmount,
+      newBalance: user.balance,
     });
   } catch (error) {
     console.error("Error cancelling order:", error);

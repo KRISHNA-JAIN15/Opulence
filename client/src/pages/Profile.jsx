@@ -11,6 +11,7 @@ import {
   Mail,
   Package,
   Eye,
+  Wallet,
 } from "lucide-react";
 import {
   getProfile,
@@ -21,6 +22,7 @@ import {
   updatePreferences,
 } from "../store/profileSlice";
 import { getUserOrders } from "../store/orderSlice";
+import { getBalance } from "../store/authSlice";
 
 const Profile = () => {
   const dispatch = useDispatch();
@@ -28,7 +30,7 @@ const Profile = () => {
   const { profile, isLoading, isError, isSuccess, message } = useSelector(
     (state) => state.profile
   );
-  const { user } = useSelector((state) => state.auth);
+  const { user, balance } = useSelector((state) => state.auth);
   const {
     orders,
     isLoading: ordersLoading,
@@ -44,6 +46,7 @@ const Profile = () => {
   useEffect(() => {
     if (user) {
       dispatch(getProfile());
+      dispatch(getBalance());
     }
   }, [dispatch, user]);
 
@@ -51,6 +54,13 @@ const Profile = () => {
   useEffect(() => {
     if (activeTab === "orders" && user) {
       dispatch(getUserOrders({ page: 1, limit: 10 }));
+    }
+  }, [activeTab, dispatch, user]);
+
+  // Refresh balance when switching to wallet tab
+  useEffect(() => {
+    if (activeTab === "wallet" && user) {
+      dispatch(getBalance());
     }
   }, [activeTab, dispatch, user]);
 
@@ -400,6 +410,7 @@ const Profile = () => {
                 {[
                   { id: "personal", label: "Personal Info", icon: User },
                   { id: "addresses", label: "Addresses", icon: MapPin },
+                  { id: "wallet", label: "Wallet", icon: Wallet },
                   { id: "orders", label: "Order History", icon: Package },
                   { id: "preferences", label: "Preferences", icon: Settings },
                 ].map(({ id, label, icon: Icon }) => (
@@ -428,6 +439,7 @@ const Profile = () => {
                 <h2 className="text-lg font-semibold text-gray-900">
                   {activeTab === "personal" && "Personal Information"}
                   {activeTab === "addresses" && "Delivery Addresses"}
+                  {activeTab === "wallet" && "Wallet Balance"}
                   {activeTab === "orders" && "Order History"}
                   {activeTab === "preferences" && "Account Preferences"}
                 </h2>
@@ -551,6 +563,65 @@ const Profile = () => {
                               )}
                             </div>
                           ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Wallet Tab */}
+                    {activeTab === "wallet" && (
+                      <div>
+                        <div className="text-center py-8">
+                          {/* Balance Card */}
+                          <div className="bg-gradient-to-r from-gray-900 to-gray-700 rounded-2xl p-8 text-white mb-8 max-w-md mx-auto">
+                            <div className="flex items-center justify-center gap-3 mb-4">
+                              <Wallet size={32} />
+                              <span className="text-lg font-medium">
+                                Wallet Balance
+                              </span>
+                            </div>
+                            <div className="text-4xl font-bold">
+                              ₹{(balance || 0).toFixed(2)}
+                            </div>
+                            <p className="text-gray-300 mt-2 text-sm">
+                              Available for purchases
+                            </p>
+                          </div>
+
+                          {/* Info Section */}
+                          <div className="bg-gray-50 rounded-lg p-6 max-w-lg mx-auto text-left">
+                            <h3 className="font-semibold text-gray-900 mb-4">
+                              About Your Wallet
+                            </h3>
+                            <ul className="space-y-3 text-sm text-gray-600">
+                              <li className="flex items-start gap-2">
+                                <span className="text-green-500 mt-0.5">✓</span>
+                                <span>
+                                  When you cancel an order, the refund amount is
+                                  automatically added to your wallet balance.
+                                </span>
+                              </li>
+                              <li className="flex items-start gap-2">
+                                <span className="text-green-500 mt-0.5">✓</span>
+                                <span>
+                                  You can use your wallet balance for future
+                                  purchases on our platform.
+                                </span>
+                              </li>
+                              <li className="flex items-start gap-2">
+                                <span className="text-green-500 mt-0.5">✓</span>
+                                <span>
+                                  Wallet balance never expires and is always
+                                  available for use.
+                                </span>
+                              </li>
+                            </ul>
+                          </div>
+
+                          {/* Note */}
+                          <p className="text-xs text-gray-500 mt-6">
+                            Note: Orders can only be cancelled until they are
+                            shipped. Once shipped, cancellation is not possible.
+                          </p>
                         </div>
                       </div>
                     )}

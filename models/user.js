@@ -45,6 +45,11 @@ const userSchema = new Schema(
         ref: "Product",
       },
     ],
+    balance: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
   },
   { timestamps: true }
 );

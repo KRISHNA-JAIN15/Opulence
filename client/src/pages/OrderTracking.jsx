@@ -19,7 +19,9 @@ import {
   getOrderById,
   cancelOrder,
   resetOrderState,
+  clearCurrentOrder,
 } from "../store/orderSlice";
+import { getBalance } from "../store/authSlice";
 import { useOrderSync } from "../hooks/useOrderSync";
 import { useToast } from "../components/Toast";
 
@@ -53,6 +55,9 @@ const OrderTracking = () => {
       navigate("/login?redirect=/orders/" + orderId);
       return;
     }
+    // Clear any stale order data before fetching fresh data
+    dispatch(clearCurrentOrder());
+    setLiveOrder(null);
     dispatch(getOrderById(orderId));
 
     return () => {
@@ -96,11 +101,26 @@ const OrderTracking = () => {
 
   const handleCancelOrder = async () => {
     try {
-      await dispatch(cancelOrder({ orderId, reason: cancelReason })).unwrap();
+      const result = await dispatch(
+        cancelOrder({ orderId, reason: cancelReason })
+      ).unwrap();
       setShowCancelModal(false);
       setCancelReason("");
+      // Update balance after successful cancellation
+      dispatch(getBalance());
+      // Show success toast with refund message
+      if (result.refundAmount) {
+        toast.success(
+          `Order cancelled! ₹${result.refundAmount.toFixed(
+            2
+          )} has been added to your wallet.`
+        );
+      } else {
+        toast.success("Order cancelled successfully!");
+      }
     } catch (error) {
       console.error("Failed to cancel order:", error);
+      toast.error(error || "Failed to cancel order");
     }
   };
 
@@ -238,13 +258,21 @@ const OrderTracking = () => {
               >
                 {getStatusLabel(displayOrder.orderStatus)}
               </span>
-              {canCancel() && (
+              {canCancel() ? (
                 <button
                   onClick={() => setShowCancelModal(true)}
                   className="text-red-600 hover:text-red-700 text-sm font-medium"
                 >
                   Cancel Order
                 </button>
+              ) : (
+                displayOrder.orderStatus !== "cancelled" &&
+                displayOrder.orderStatus !== "delivered" &&
+                displayOrder.orderStatus !== "returned" && (
+                  <span className="text-xs text-gray-500 italic">
+                    Cannot cancel - order has been shipped
+                  </span>
+                )
               )}
             </div>
           </div>
@@ -314,22 +342,22 @@ const OrderTracking = () => {
                   <div>
                     <p className="text-sm text-gray-600">Tracking Number</p>
                     <p className="font-medium">
-                      {displayOrder.tracking.trackingNumber}
+                      {displayOrder?.tracking?.trackingNumber}
                     </p>
-                    {displayOrder.tracking.carrier && (
+                    {displayOrder?.tracking?.carrier && (
                       <p className="text-sm text-gray-500">
-                        via {displayOrder.tracking.carrier}
+                        via {displayOrder?.tracking?.carrier}
                       </p>
                     )}
                   </div>
-                  {displayOrder.tracking.estimatedDelivery && (
+                  {displayOrder?.tracking?.estimatedDelivery && (
                     <div className="text-right">
                       <p className="text-sm text-gray-600">
                         Estimated Delivery
                       </p>
                       <p className="font-medium">
                         {new Date(
-                          displayOrder.tracking.estimatedDelivery
+                          displayOrder?.tracking?.estimatedDelivery
                         ).toLocaleDateString("en-IN", {
                           weekday: "long",
                           year: "numeric",
@@ -380,10 +408,10 @@ const OrderTracking = () => {
           {/* Order Items */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Order Items ({displayOrder.items.length})
+              Order Items ({displayOrder?.items?.length || 0})
             </h2>
             <div className="space-y-4">
-              {displayOrder.items.map((item, index) => (
+              {(displayOrder?.items || []).map((item, index) => (
                 <div key={index} className="flex items-center gap-4">
                   <img
                     src={item.image || "/placeholder-product.jpg"}
@@ -409,29 +437,37 @@ const OrderTracking = () => {
             <div className="mt-6 pt-4 border-t border-gray-200 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Subtotal</span>
-                <span>₹{displayOrder.pricing.subtotal.toFixed(2)}</span>
+                <span>
+                  ₹{displayOrder?.pricing?.subtotal?.toFixed(2) || "0.00"}
+                </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Shipping</span>
                 <span>
-                  {displayOrder.pricing.shipping === 0
+                  {displayOrder?.pricing?.shipping === 0
                     ? "Free"
-                    : `₹${displayOrder.pricing.shipping.toFixed(2)}`}
+                    : `₹${
+                        displayOrder?.pricing?.shipping?.toFixed(2) || "0.00"
+                      }`}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Tax</span>
-                <span>₹{displayOrder.pricing.tax.toFixed(2)}</span>
+                <span>₹{displayOrder?.pricing?.tax?.toFixed(2) || "0.00"}</span>
               </div>
-              {displayOrder.pricing.discount > 0 && (
+              {displayOrder?.pricing?.discount > 0 && (
                 <div className="flex justify-between text-sm text-green-600">
                   <span>Discount</span>
-                  <span>-₹{displayOrder.pricing.discount.toFixed(2)}</span>
+                  <span>
+                    -₹{displayOrder?.pricing?.discount?.toFixed(2) || "0.00"}
+                  </span>
                 </div>
               )}
               <div className="flex justify-between font-bold text-lg pt-2 border-t border-gray-200">
                 <span>Total</span>
-                <span>₹{displayOrder.pricing.total.toFixed(2)}</span>
+                <span>
+                  ₹{displayOrder?.pricing?.total?.toFixed(2) || "0.00"}
+                </span>
               </div>
             </div>
           </div>
@@ -446,19 +482,19 @@ const OrderTracking = () => {
               </h2>
               <div className="text-gray-600">
                 <p className="font-medium text-gray-900">
-                  {displayOrder.shippingAddress.firstName}{" "}
-                  {displayOrder.shippingAddress.lastName}
+                  {displayOrder?.shippingAddress?.firstName}{" "}
+                  {displayOrder?.shippingAddress?.lastName}
                 </p>
-                <p>{displayOrder.shippingAddress.address}</p>
-                {displayOrder.shippingAddress.apartment && (
-                  <p>{displayOrder.shippingAddress.apartment}</p>
+                <p>{displayOrder?.shippingAddress?.address}</p>
+                {displayOrder?.shippingAddress?.apartment && (
+                  <p>{displayOrder?.shippingAddress?.apartment}</p>
                 )}
                 <p>
-                  {displayOrder.shippingAddress.city},{" "}
-                  {displayOrder.shippingAddress.state}{" "}
-                  {displayOrder.shippingAddress.zipCode}
+                  {displayOrder?.shippingAddress?.city},{" "}
+                  {displayOrder?.shippingAddress?.state}{" "}
+                  {displayOrder?.shippingAddress?.zipCode}
                 </p>
-                <p>{displayOrder.shippingAddress.country}</p>
+                <p>{displayOrder?.shippingAddress?.country}</p>
               </div>
             </div>
 
@@ -470,11 +506,11 @@ const OrderTracking = () => {
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-gray-600">
                   <Mail size={16} />
-                  <span>{displayOrder.contact.email}</span>
+                  <span>{displayOrder?.contact?.email}</span>
                 </div>
                 <div className="flex items-center gap-2 text-gray-600">
                   <Phone size={16} />
-                  <span>{displayOrder.contact.phone}</span>
+                  <span>{displayOrder?.contact?.phone}</span>
                 </div>
               </div>
             </div>
@@ -488,29 +524,31 @@ const OrderTracking = () => {
                 <div className="flex justify-between">
                   <span>Method</span>
                   <span className="font-medium text-gray-900 capitalize">
-                    {displayOrder.payment.method}
+                    {displayOrder?.payment?.method}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Status</span>
                   <span
                     className={`font-medium ${
-                      displayOrder.payment.status === "completed"
+                      displayOrder?.payment?.status === "completed"
                         ? "text-green-600"
-                        : displayOrder.payment.status === "failed"
+                        : displayOrder?.payment?.status === "failed"
                         ? "text-red-600"
                         : "text-yellow-600"
                     }`}
                   >
-                    {displayOrder.payment.status.charAt(0).toUpperCase() +
-                      displayOrder.payment.status.slice(1)}
+                    {displayOrder?.payment?.status
+                      ? displayOrder.payment.status.charAt(0).toUpperCase() +
+                        displayOrder.payment.status.slice(1)
+                      : "Pending"}
                   </span>
                 </div>
-                {displayOrder.payment.razorpayPaymentId && (
+                {displayOrder?.payment?.razorpayPaymentId && (
                   <div className="flex justify-between">
                     <span>Payment ID</span>
                     <span className="font-mono text-sm">
-                      {displayOrder.payment.razorpayPaymentId}
+                      {displayOrder?.payment?.razorpayPaymentId}
                     </span>
                   </div>
                 )}
@@ -518,7 +556,7 @@ const OrderTracking = () => {
             </div>
 
             {/* Order Notes */}
-            {displayOrder.orderNotes && (
+            {displayOrder?.orderNotes && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">
                   Order Notes
@@ -581,6 +619,16 @@ const OrderTracking = () => {
               Are you sure you want to cancel this order? This action cannot be
               undone.
             </p>
+
+            {/* Refund Info */}
+            <div className="bg-green-50 border border-green-200 rounded-md p-3 mb-4">
+              <p className="text-sm text-green-800">
+                💰 <strong>Refund:</strong> ₹
+                {displayOrder?.pricing?.total?.toFixed(2) || "0.00"} will be
+                credited to your wallet balance instantly.
+              </p>
+            </div>
+
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Reason for cancellation (optional)

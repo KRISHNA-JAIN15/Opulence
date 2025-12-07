@@ -157,12 +157,15 @@ const Checkout = () => {
   const tax = subtotal * 0.08;
   const shipping = 0; // Free shipping
   const totalBeforeWallet = subtotal + tax + shipping;
-  
+
   // Calculate wallet amount to use
   const walletBalance = balance || 0;
-  const walletAmountToUse = useWallet ? Math.min(walletBalance, totalBeforeWallet) : 0;
+  const walletAmountToUse = useWallet
+    ? Math.min(walletBalance, totalBeforeWallet)
+    : 0;
   const total = totalBeforeWallet - walletAmountToUse;
-  const isFullWalletPayment = useWallet && walletAmountToUse >= totalBeforeWallet;
+  const isFullWalletPayment =
+    useWallet && walletAmountToUse >= totalBeforeWallet;
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -320,7 +323,9 @@ const Checkout = () => {
 
       // Create Razorpay order for the remaining amount after wallet
       const amountToPay = total; // This is already totalBeforeWallet - walletAmountToUse
-      const orderResult = await dispatch(createRazorpayOrder(amountToPay)).unwrap();
+      const orderResult = await dispatch(
+        createRazorpayOrder(amountToPay)
+      ).unwrap();
 
       if (!orderResult.orderId) {
         setErrors({
@@ -336,9 +341,10 @@ const Checkout = () => {
         amount: orderResult.amount,
         currency: orderResult.currency || "INR",
         name: "Opulence",
-        description: walletAmountToUse > 0 
-          ? `Order Payment (₹${walletAmountToUse.toFixed(2)} from wallet)` 
-          : "Order Payment",
+        description:
+          walletAmountToUse > 0
+            ? `Order Payment (₹${walletAmountToUse.toFixed(2)} from wallet)`
+            : "Order Payment",
         order_id: orderResult.orderId,
         handler: async function (response) {
           try {
@@ -815,8 +821,10 @@ const Checkout = () => {
                   ) : (
                     <>
                       <CreditCard size={20} />
-                      {walletAmountToUse > 0 
-                        ? `Pay ₹${total.toFixed(2)} (+ ₹${walletAmountToUse.toFixed(2)} wallet)`
+                      {walletAmountToUse > 0
+                        ? `Pay ₹${total.toFixed(
+                            2
+                          )} (+ ₹${walletAmountToUse.toFixed(2)} wallet)`
                         : `Pay ₹${total.toFixed(2)}`}
                     </>
                   )}
@@ -900,9 +908,13 @@ const Checkout = () => {
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                           <Wallet size={18} className="text-gray-600" />
-                          <span className="text-sm font-medium text-gray-700">Wallet Balance</span>
+                          <span className="text-sm font-medium text-gray-700">
+                            Wallet Balance
+                          </span>
                         </div>
-                        <span className="text-sm font-semibold text-green-600">₹{walletBalance.toFixed(2)}</span>
+                        <span className="text-sm font-semibold text-green-600">
+                          ₹{walletBalance.toFixed(2)}
+                        </span>
                       </div>
                       <label className="flex items-center gap-2 cursor-pointer bg-gray-50 p-3 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
                         <input
@@ -917,9 +929,13 @@ const Checkout = () => {
                           </span>
                           {useWallet && (
                             <p className="text-xs text-gray-500 mt-0.5">
-                              {isFullWalletPayment 
-                                ? "Full payment from wallet" 
-                                : `₹${walletAmountToUse.toFixed(2)} from wallet, ₹${total.toFixed(2)} via Razorpay`}
+                              {isFullWalletPayment
+                                ? "Full payment from wallet"
+                                : `₹${walletAmountToUse.toFixed(
+                                    2
+                                  )} from wallet, ₹${total.toFixed(
+                                    2
+                                  )} via Razorpay`}
                             </p>
                           )}
                         </div>
@@ -931,13 +947,21 @@ const Checkout = () => {
                   {useWallet && walletAmountToUse > 0 && (
                     <div className="flex justify-between text-sm text-green-600">
                       <span>Wallet Deduction</span>
-                      <span className="font-medium">-₹{walletAmountToUse.toFixed(2)}</span>
+                      <span className="font-medium">
+                        -₹{walletAmountToUse.toFixed(2)}
+                      </span>
                     </div>
                   )}
 
                   <div className="flex justify-between text-lg font-bold border-t border-gray-200 pt-3">
-                    <span>{isFullWalletPayment ? "Pay from Wallet" : "Amount to Pay"}</span>
-                    <span className={isFullWalletPayment ? "text-green-600" : ""}>
+                    <span>
+                      {isFullWalletPayment
+                        ? "Pay from Wallet"
+                        : "Amount to Pay"}
+                    </span>
+                    <span
+                      className={isFullWalletPayment ? "text-green-600" : ""}
+                    >
                       ₹{total.toFixed(2)}
                     </span>
                   </div>

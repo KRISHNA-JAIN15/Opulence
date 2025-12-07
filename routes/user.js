@@ -157,4 +157,78 @@ router.get(
   }
 );
 
+// Send promotional coupon email to all users (admin only)
+router.post("/send-coupon", authenticateToken, adminOnly, async (req, res) => {
+  try {
+    const User = require("../models/user");
+    const {
+      sendCouponPromoEmail,
+    } = require("../middlewares/email/emailService");
+
+    const { couponCode, discountAmount } = req.body;
+
+    if (!couponCode || !discountAmount) {
+      return res.status(400).json({
+        success: false,
+        message: "Coupon code and discount amount are required",
+      });
+    }
+
+    // Get all verified users (excluding admins)
+    const users = await User.find({
+      isVerified: true,
+      type: { $ne: "admin" },
+    }).select("email name");
+
+    if (users.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No verified users found to send emails to",
+      });
+    }
+
+    // Send emails to all users
+    let successCount = 0;
+    let failCount = 0;
+    const errors = [];
+
+    for (const user of users) {
+      try {
+        const result = await sendCouponPromoEmail(
+          user.email,
+          user.name,
+          couponCode,
+          discountAmount
+        );
+        if (result.success) {
+          successCount++;
+        } else {
+          failCount++;
+          errors.push({ email: user.email, error: result.error });
+        }
+      } catch (err) {
+        failCount++;
+        errors.push({ email: user.email, error: err.message });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Promotional emails sent successfully`,
+      stats: {
+        total: users.length,
+        success: successCount,
+        failed: failCount,
+      },
+      errors: errors.length > 0 ? errors : undefined,
+    });
+  } catch (error) {
+    console.error("Error sending coupon emails:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+});
+
 module.exports = router;

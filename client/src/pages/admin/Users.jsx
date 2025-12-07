@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
+import { useLocation } from "react-router-dom";
 import axios from "axios";
 import {
   Users,
@@ -15,22 +16,44 @@ import {
   CheckCircle,
   XCircle,
   User,
-  Filter,
   Eye,
+  Settings,
+  Tag,
+  Send,
+  X,
+  ChevronDown,
 } from "lucide-react";
 
 const API_URL = "http://localhost:3000/api";
 
 const AdminUsers = () => {
   const { user, token } = useSelector((state) => state.auth);
+  const location = useLocation();
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [userActivity, setUserActivity] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingActivity, setIsLoadingActivity] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterType, setFilterType] = useState("all");
   const [error, setError] = useState(null);
+
+  // Settings dropdown state
+  const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
+  const [showCouponModal, setShowCouponModal] = useState(false);
+  const [couponCode, setCouponCode] = useState("");
+  const [discountAmount, setDiscountAmount] = useState("");
+  const [isSendingCoupon, setIsSendingCoupon] = useState(false);
+  const [couponSuccess, setCouponSuccess] = useState(null);
+  const [couponError, setCouponError] = useState(null);
+
+  // Open coupon modal if navigated with state
+  useEffect(() => {
+    if (location.state?.openCouponModal) {
+      setShowCouponModal(true);
+      // Clear the state so it doesn't reopen on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   // Fetch all users
   useEffect(() => {
@@ -83,18 +106,56 @@ const AdminUsers = () => {
     setUserActivity(null);
   };
 
-  // Filter users
+  // Send coupon to all users
+  const handleSendCoupon = async (e) => {
+    e.preventDefault();
+    setCouponSuccess(null);
+    setCouponError(null);
+
+    if (!couponCode.trim() || !discountAmount) {
+      setCouponError("Please fill in all fields");
+      return;
+    }
+
+    try {
+      setIsSendingCoupon(true);
+      const response = await axios.post(
+        `${API_URL}/users/send-coupon`,
+        {
+          couponCode: couponCode.trim().toUpperCase(),
+          discountAmount: parseFloat(discountAmount),
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (response.data.success) {
+        setCouponSuccess(
+          `Successfully sent coupon to ${response.data.stats.success} users!`
+        );
+        setCouponCode("");
+        setDiscountAmount("");
+        setTimeout(() => {
+          setShowCouponModal(false);
+          setCouponSuccess(null);
+        }, 3000);
+      }
+    } catch (err) {
+      setCouponError(
+        err.response?.data?.message || "Failed to send coupon emails"
+      );
+    } finally {
+      setIsSendingCoupon(false);
+    }
+  };
+
+  // Filter users by search query (name or email only)
   const filteredUsers = users.filter((u) => {
-    const matchesSearch =
+    return (
       u.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.email?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType =
-      filterType === "all" ||
-      (filterType === "verified" && u.isVerified) ||
-      (filterType === "unverified" && !u.isVerified) ||
-      (filterType === "admin" && u.type === "admin") ||
-      (filterType === "buyer" && u.type === "buyer");
-    return matchesSearch && matchesType;
+      u.email?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
   });
 
   if (user?.type !== "admin") {
@@ -423,14 +484,165 @@ const AdminUsers = () => {
   // Users List View
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Coupon Modal */}
+      {showCouponModal && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white/95 backdrop-blur-md rounded-lg shadow-xl max-w-md w-full mx-4 overflow-hidden border border-white/20">
+            <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4 flex items-center justify-between">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <Tag size={24} />
+                Create & Send Coupon
+              </h3>
+              <button
+                onClick={() => {
+                  setShowCouponModal(false);
+                  setCouponError(null);
+                  setCouponSuccess(null);
+                }}
+                className="text-white hover:text-gray-200 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            <form onSubmit={handleSendCoupon} className="p-6">
+              {couponSuccess && (
+                <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-lg flex items-center gap-2">
+                  <CheckCircle size={20} />
+                  {couponSuccess}
+                </div>
+              )}
+              {couponError && (
+                <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg flex items-center gap-2">
+                  <XCircle size={20} />
+                  {couponError}
+                </div>
+              )}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Coupon Code
+                </label>
+                <input
+                  type="text"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                  placeholder="e.g., SAVE20"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent uppercase"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter a unique coupon code for customers to use
+                </p>
+              </div>
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Discount Amount (₹)
+                </label>
+                <input
+                  type="number"
+                  value={discountAmount}
+                  onChange={(e) => setDiscountAmount(e.target.value)}
+                  placeholder="e.g., 100"
+                  min="1"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Fixed amount discount in rupees
+                </p>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Mail size={16} />
+                  <span>
+                    This will send an email to all{" "}
+                    <strong>
+                      {
+                        users.filter((u) => u.isVerified && u.type !== "admin")
+                          .length
+                      }
+                    </strong>{" "}
+                    verified customers
+                  </span>
+                </div>
+                {users.filter((u) => u.isVerified && u.type !== "admin")
+                  .length === 0 && (
+                  <p className="text-xs text-red-500 mt-2">
+                    No verified customers found. Make sure users have verified
+                    their email addresses.
+                  </p>
+                )}
+              </div>
+              <button
+                type="submit"
+                disabled={
+                  isSendingCoupon ||
+                  users.filter((u) => u.isVerified && u.type !== "admin")
+                    .length === 0
+                }
+                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-lg font-medium hover:from-purple-700 hover:to-pink-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSendingCoupon ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    Sending Emails...
+                  </>
+                ) : (
+                  <>
+                    <Send size={20} />
+                    Send to All Users
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-black text-gray-900 uppercase tracking-wide">
-          User Management
-        </h1>
-        <p className="text-gray-600 mt-2">
-          View and manage all registered users
-        </p>
+      <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-black text-gray-900 uppercase tracking-wide">
+            User Management
+          </h1>
+          <p className="text-gray-600 mt-2">
+            View and manage all registered users
+          </p>
+        </div>
+
+        {/* Settings Dropdown */}
+        {/* <div className="relative">
+          <button
+            onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
+            className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors"
+          >
+            <Settings size={20} />
+            <span>Settings</span>
+            <ChevronDown
+              size={16}
+              className={`transition-transform ${
+                showSettingsDropdown ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+          {showSettingsDropdown && (
+            <>
+              <div
+                className="fixed inset-0 z-10"
+                onClick={() => setShowSettingsDropdown(false)}
+              ></div>
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-20 overflow-hidden">
+                <button
+                  onClick={() => {
+                    setShowCouponModal(true);
+                    setShowSettingsDropdown(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+                >
+                  <Tag size={18} className="text-purple-600" />
+                  <span className="font-medium text-gray-700">Coupons</span>
+                </button>
+              </div>
+            </>
+          )}
+        </div> */}
       </div>
 
       {/* Stats */}
@@ -489,10 +701,10 @@ const AdminUsers = () => {
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Search */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
-        <div className="p-4 flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
+        <div className="p-4">
+          <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-gray-400" />
             </div>
@@ -503,20 +715,6 @@ const AdminUsers = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
             />
-          </div>
-          <div className="flex items-center gap-2">
-            <Filter size={20} className="text-gray-500" />
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
-            >
-              <option value="all">All Users</option>
-              <option value="verified">Verified</option>
-              <option value="unverified">Unverified</option>
-              <option value="admin">Admins</option>
-              <option value="buyer">Buyers</option>
-            </select>
           </div>
         </div>
       </div>

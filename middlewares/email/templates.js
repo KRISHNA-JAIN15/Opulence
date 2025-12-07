@@ -263,8 +263,179 @@ const Password_Reset_Template = `
 </html>
 `;
 
+const Coupon_Promo_Template = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exclusive Coupon for You!</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            margin: 30px auto;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            border: 1px solid #ddd;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .header-subtitle {
+            font-size: 16px;
+            font-weight: normal;
+            margin-top: 10px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px;
+            color: #333;
+            line-height: 1.8;
+            text-align: center;
+        }
+        .coupon-box {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 25px 0;
+            text-align: center;
+        }
+        .coupon-code {
+            font-size: 32px;
+            color: white;
+            font-weight: bold;
+            letter-spacing: 4px;
+            background: rgba(255,255,255,0.2);
+            padding: 15px 25px;
+            border-radius: 8px;
+            display: inline-block;
+            border: 2px dashed rgba(255,255,255,0.5);
+        }
+        .discount-amount {
+            font-size: 48px;
+            color: white;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .discount-label {
+            font-size: 16px;
+            color: rgba(255,255,255,0.9);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .shop-button {
+            display: inline-block;
+            padding: 15px 40px;
+            margin: 20px 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            transition: transform 0.3s;
+        }
+        .shop-button:hover {
+            transform: scale(1.05);
+        }
+        .features {
+            display: flex;
+            justify-content: space-around;
+            margin: 25px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .feature {
+            text-align: center;
+            flex: 1;
+        }
+        .feature-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        .feature-text {
+            font-size: 12px;
+            color: #666;
+        }
+        .footer {
+            background-color: #f4f4f4;
+            padding: 20px;
+            text-align: center;
+            color: #777;
+            font-size: 12px;
+            border-top: 1px solid #ddd;
+        }
+        p {
+            margin: 0 0 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            🎉 Exclusive Offer Just for You!
+            <div class="header-subtitle">Special discount from Opulence</div>
+        </div>
+        <div class="content">
+            <p>Hello {name},</p>
+            <p>We have an amazing offer waiting for you! Use this exclusive coupon code on your next purchase and save big.</p>
+            
+            <div class="coupon-box">
+                <div class="discount-amount">₹{discountAmount} OFF</div>
+                <div class="discount-label">Your Exclusive Discount</div>
+                <div style="margin-top: 20px;">
+                    <div class="coupon-code">{couponCode}</div>
+                </div>
+            </div>
+            
+            <p>Simply apply this code at checkout to enjoy your savings!</p>
+            
+            <a href="http://localhost:5173/products" class="shop-button">Shop Now →</a>
+            
+            <div class="features">
+                <div class="feature">
+                    <div class="feature-icon">🚚</div>
+                    <div class="feature-text">Free Shipping</div>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🔒</div>
+                    <div class="feature-text">Secure Payment</div>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">↩️</div>
+                    <div class="feature-text">Easy Returns</div>
+                </div>
+            </div>
+            
+            <p style="font-size: 14px; color: #666;">Don't miss out on this limited-time offer. Happy shopping!</p>
+        </div>
+        <div class="footer">
+            <p>You received this email because you're a valued Opulence customer.</p>
+            <p>&copy; ${new Date().getFullYear()} Opulence. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+`;
+
 module.exports = {
   Verification_Email_Template,
   Welcome_Email_Template,
   Password_Reset_Template,
+  Coupon_Promo_Template,
 };

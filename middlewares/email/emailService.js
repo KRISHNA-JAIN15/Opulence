@@ -3,6 +3,7 @@ const {
   Verification_Email_Template,
   Welcome_Email_Template,
   Password_Reset_Template,
+  Coupon_Promo_Template,
 } = require("./templates");
 
 const sendVerificationEmail = async (email, name, verificationCode) => {
@@ -64,8 +65,34 @@ const sendPasswordResetEmail = async (email, name, resetUrl, ipAddress) => {
   }
 };
 
+const sendCouponPromoEmail = async (
+  email,
+  name,
+  couponCode,
+  discountAmount
+) => {
+  try {
+    const mailOptions = {
+      from: `"Opulence" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: "🎉 Exclusive Coupon Just for You! - Opulence",
+      html: Coupon_Promo_Template.replace(/\{name\}/g, name)
+        .replace(/\{couponCode\}/g, couponCode)
+        .replace(/\{discountAmount\}/g, discountAmount),
+    };
+
+    const result = await transporter.sendMail(mailOptions);
+    console.log("Coupon promo email sent successfully:", result.messageId);
+    return { success: true, messageId: result.messageId };
+  } catch (error) {
+    console.error("Error sending coupon promo email:", error);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   sendVerificationEmail,
   sendWelcomeEmail,
   sendPasswordResetEmail,
+  sendCouponPromoEmail,
 };

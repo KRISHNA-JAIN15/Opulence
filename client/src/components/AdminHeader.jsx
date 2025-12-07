@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../store/authSlice";
@@ -10,12 +11,15 @@ import {
   LogOut,
   Home,
   ShoppingCart,
+  Tag,
+  ChevronDown,
 } from "lucide-react";
 
 const AdminHeader = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
+  const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -57,7 +61,7 @@ const AdminHeader = () => {
                 className="flex items-center gap-2 text-gray-700 text-sm font-bold hover:text-blue-600 transition uppercase tracking-wider"
               >
                 <Plus size={18} />
-                Add Product
+                Add
               </Link>
               <Link
                 to="/admin/inventory"
@@ -80,13 +84,44 @@ const AdminHeader = () => {
                 <ShoppingCart size={18} />
                 Orders
               </Link>
-              <Link
-                to="#"
-                className="flex items-center gap-2 text-gray-700 text-sm font-bold hover:text-blue-600 transition uppercase tracking-wider"
-              >
-                <Settings size={18} />
-                Settings
-              </Link>
+
+              {/* Settings Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
+                  className="flex items-center gap-2 text-gray-700 text-sm font-bold hover:text-blue-600 transition uppercase tracking-wider"
+                >
+                  <Settings size={18} />
+                  Settings
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform ${
+                      showSettingsDropdown ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+                {showSettingsDropdown && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShowSettingsDropdown(false)}
+                    ></div>
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-20 overflow-hidden">
+                      <Link
+                        to="/admin/users"
+                        onClick={() => setShowSettingsDropdown(false)}
+                        state={{ openCouponModal: true }}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-blue-50 transition-colors text-left"
+                      >
+                        <Tag size={18} className="text-purple-600" />
+                        <span className="font-medium text-gray-700">
+                          Coupons
+                        </span>
+                      </Link>
+                    </div>
+                  </>
+                )}
+              </div>
             </nav>
 
             {/* Right Actions */}

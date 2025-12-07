@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { getProducts, reset } from "../../store/productSlice";
+import axios from "axios";
 import {
   Package,
   Plus,
@@ -14,48 +15,81 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
+const API_URL = "http://localhost:3000/api";
+
 const AdminDashboard = () => {
   const dispatch = useDispatch();
   const { products, isLoading, pagination } = useSelector(
     (state) => state.products
   );
-  const { user } = useSelector((state) => state.auth);
+  const { user, token } = useSelector((state) => state.auth);
   const [searchQuery, setSearchQuery] = useState("");
+  const [dashboardStats, setDashboardStats] = useState({
+    totalOrders: 0,
+    totalUsers: 0,
+    totalRevenue: 0,
+  });
+  const [statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
     dispatch(getProducts());
     return () => dispatch(reset());
   }, [dispatch]);
 
-  // Mock statistics - you can replace with real data from backend
+  // Fetch dashboard stats
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setStatsLoading(true);
+        const response = await axios.get(`${API_URL}/orders/admin/stats`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (response.data.success) {
+          setDashboardStats({
+            totalOrders: response.data.stats.totalOrders,
+            totalUsers: response.data.stats.totalUsers,
+            totalRevenue: response.data.stats.totalRevenue,
+          });
+        }
+      } catch (err) {
+        console.error("Failed to fetch dashboard stats:", err);
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+
+    if (token && user?.type === "admin") {
+      fetchStats();
+    }
+  }, [token, user]);
+
+  // Dynamic statistics from backend
   const stats = [
     {
       title: "Total Products",
       value: pagination?.total || 0,
       icon: <Package className="w-8 h-8" />,
       color: "bg-blue-500",
-      change: "+12%",
     },
     {
       title: "Total Orders",
-      value: "1,234",
+      value: statsLoading ? "..." : dashboardStats.totalOrders.toLocaleString(),
       icon: <ShoppingCart className="w-8 h-8" />,
       color: "bg-green-500",
-      change: "+8%",
     },
     {
       title: "Total Users",
-      value: "567",
+      value: statsLoading ? "..." : dashboardStats.totalUsers.toLocaleString(),
       icon: <Users className="w-8 h-8" />,
       color: "bg-purple-500",
-      change: "+15%",
     },
     {
       title: "Revenue",
-      value: "€45,678",
+      value: statsLoading
+        ? "..."
+        : `₹${dashboardStats.totalRevenue.toLocaleString()}`,
       icon: <TrendingUp className="w-8 h-8" />,
       color: "bg-orange-500",
-      change: "+23%",
     },
   ];
 
@@ -107,9 +141,6 @@ const AdminDashboard = () => {
                 </p>
                 <p className="text-3xl font-bold text-gray-900 mt-2">
                   {stat.value}
-                </p>
-                <p className="text-sm text-green-600 mt-1">
-                  {stat.change} from last month
                 </p>
               </div>
               <div className={`${stat.color} text-white p-3 rounded-lg`}>

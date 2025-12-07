@@ -308,7 +308,8 @@ exports.createWalletOrder = async (req, res) => {
     if (walletAmountUsed < totalAmount) {
       return res.status(400).json({
         success: false,
-        message: "Wallet balance insufficient for full payment. Use Razorpay for partial payment.",
+        message:
+          "Wallet balance insufficient for full payment. Use Razorpay for partial payment.",
       });
     }
 
@@ -676,6 +677,9 @@ exports.getOrderStats = async (req, res) => {
       orderStatus: "cancelled",
     });
 
+    // Total users count
+    const totalUsers = await User.countDocuments();
+
     // Revenue calculation
     const revenueResult = await Order.aggregate([
       {
@@ -708,6 +712,7 @@ exports.getOrderStats = async (req, res) => {
         completedOrders,
         cancelledOrders,
         totalRevenue,
+        totalUsers,
       },
       recentOrders,
     });

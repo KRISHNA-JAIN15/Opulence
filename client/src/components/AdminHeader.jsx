@@ -9,6 +9,7 @@ import {
   Settings,
   LogOut,
   Home,
+  ShoppingCart,
 } from "lucide-react";
 
 const AdminHeader = () => {
@@ -71,6 +72,13 @@ const AdminHeader = () => {
               >
                 <Users size={18} />
                 Users
+              </Link>
+              <Link
+                to="/admin/orders"
+                className="flex items-center gap-2 text-gray-700 text-sm font-bold hover:text-blue-600 transition uppercase tracking-wider"
+              >
+                <ShoppingCart size={18} />
+                Orders
               </Link>
               <Link
                 to="#"

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -20,11 +20,17 @@ import {
   cancelOrder,
   resetOrderState,
 } from "../store/orderSlice";
+import { useOrderSync } from "../hooks/useOrderSync";
+import { useToast } from "../components/Toast";
+
+// Sync interval in milliseconds (3 seconds)
+const SYNC_INTERVAL = 3000;
 
 const OrderTracking = () => {
   const { orderId } = useParams();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const toast = useToast();
   const { currentOrder, isLoading, isError, message } = useSelector(
     (state) => state.order
   );
@@ -33,6 +39,14 @@ const OrderTracking = () => {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [copied, setCopied] = useState(false);
+  const [liveOrder, setLiveOrder] = useState(null);
+
+  // Use order sync hook for real-time updates
+  const { syncOrder } = useOrderSync(orderId, toast);
+  const syncIntervalRef = useRef(null);
+
+  // Display order (prefer live order over redux order)
+  const displayOrder = liveOrder || currentOrder;
 
   useEffect(() => {
     if (!token) {
@@ -46,9 +60,35 @@ const OrderTracking = () => {
     };
   }, [dispatch, orderId, token, navigate]);
 
+  // Set up real-time order sync
+  useEffect(() => {
+    if (!orderId || !token) return;
+
+    // Sync function that updates local state
+    const performSync = async () => {
+      const result = await syncOrder();
+      if (result?.order) {
+        setLiveOrder(result.order);
+      }
+    };
+
+    // Run initial sync after a short delay (let initial load complete first)
+    const initialTimeout = setTimeout(performSync, 1000);
+
+    // Set up interval for continuous sync
+    syncIntervalRef.current = setInterval(performSync, SYNC_INTERVAL);
+
+    return () => {
+      clearTimeout(initialTimeout);
+      if (syncIntervalRef.current) {
+        clearInterval(syncIntervalRef.current);
+      }
+    };
+  }, [orderId, token, syncOrder]);
+
   const copyOrderNumber = () => {
-    if (currentOrder?.orderNumber) {
-      navigator.clipboard.writeText(currentOrder.orderNumber);
+    if (displayOrder?.orderNumber) {
+      navigator.clipboard.writeText(displayOrder.orderNumber);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -109,10 +149,10 @@ const OrderTracking = () => {
       "out_for_delivery",
       "delivered",
     ];
-    const currentIndex = statusOrder.indexOf(currentOrder?.orderStatus);
+    const currentIndex = statusOrder.indexOf(displayOrder?.orderStatus);
     const stepIndex = statusOrder.indexOf(stepStatus);
 
-    if (currentOrder?.orderStatus === "cancelled") return "cancelled";
+    if (displayOrder?.orderStatus === "cancelled") return "cancelled";
     if (stepIndex < currentIndex) return "completed";
     if (stepIndex === currentIndex) return "current";
     return "upcoming";
@@ -126,7 +166,7 @@ const OrderTracking = () => {
       "cancelled",
       "returned",
     ];
-    return !nonCancellable.includes(currentOrder?.orderStatus);
+    return !nonCancellable.includes(displayOrder?.orderStatus);
   };
 
   if (isLoading) {
@@ -137,7 +177,7 @@ const OrderTracking = () => {
     );
   }
 
-  if (isError || !currentOrder) {
+  if (isError || !displayOrder) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -175,7 +215,7 @@ const OrderTracking = () => {
               </h1>
               <div className="flex items-center gap-2 mt-1">
                 <p className="text-gray-600">
-                  Order #{currentOrder.orderNumber}
+                  Order #{displayOrder.orderNumber}
                 </p>
                 <button
                   onClick={copyOrderNumber}
@@ -192,10 +232,10 @@ const OrderTracking = () => {
             <div className="flex items-center gap-3">
               <span
                 className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(
-                  currentOrder.orderStatus
+                  displayOrder.orderStatus
                 )}`}
               >
-                {getStatusLabel(currentOrder.orderStatus)}
+                {getStatusLabel(displayOrder.orderStatus)}
               </span>
               {canCancel() && (
                 <button
@@ -210,7 +250,7 @@ const OrderTracking = () => {
         </div>
 
         {/* Order Progress */}
-        {currentOrder.orderStatus !== "cancelled" && (
+        {displayOrder.orderStatus !== "cancelled" && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-6">
               Order Progress
@@ -256,7 +296,7 @@ const OrderTracking = () => {
                   style={{
                     width: `${
                       (orderSteps.findIndex(
-                        (s) => s.status === currentOrder.orderStatus
+                        (s) => s.status === displayOrder.orderStatus
                       ) /
                         (orderSteps.length - 1)) *
                       100
@@ -267,28 +307,28 @@ const OrderTracking = () => {
             </div>
 
             {/* Tracking Info */}
-            {currentOrder.tracking?.trackingNumber && (
+            {displayOrder.tracking?.trackingNumber && (
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">Tracking Number</p>
                     <p className="font-medium">
-                      {currentOrder.tracking.trackingNumber}
+                      {displayOrder.tracking.trackingNumber}
                     </p>
-                    {currentOrder.tracking.carrier && (
+                    {displayOrder.tracking.carrier && (
                       <p className="text-sm text-gray-500">
-                        via {currentOrder.tracking.carrier}
+                        via {displayOrder.tracking.carrier}
                       </p>
                     )}
                   </div>
-                  {currentOrder.tracking.estimatedDelivery && (
+                  {displayOrder.tracking.estimatedDelivery && (
                     <div className="text-right">
                       <p className="text-sm text-gray-600">
                         Estimated Delivery
                       </p>
                       <p className="font-medium">
                         {new Date(
-                          currentOrder.tracking.estimatedDelivery
+                          displayOrder.tracking.estimatedDelivery
                         ).toLocaleDateString("en-IN", {
                           weekday: "long",
                           year: "numeric",
@@ -305,20 +345,20 @@ const OrderTracking = () => {
         )}
 
         {/* Cancelled Order Info */}
-        {currentOrder.orderStatus === "cancelled" && (
+        {displayOrder.orderStatus === "cancelled" && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-6">
             <div className="flex items-start gap-3">
               <XCircle className="w-6 h-6 text-red-600 shrink-0" />
               <div>
                 <h3 className="font-semibold text-red-800">Order Cancelled</h3>
                 <p className="text-red-700 text-sm mt-1">
-                  {currentOrder.cancellationReason ||
+                  {displayOrder.cancellationReason ||
                     "This order was cancelled."}
                 </p>
-                {currentOrder.cancelledAt && (
+                {displayOrder.cancelledAt && (
                   <p className="text-red-600 text-xs mt-2">
                     Cancelled on{" "}
-                    {new Date(currentOrder.cancelledAt).toLocaleDateString(
+                    {new Date(displayOrder.cancelledAt).toLocaleDateString(
                       "en-IN",
                       {
                         year: "numeric",
@@ -339,10 +379,10 @@ const OrderTracking = () => {
           {/* Order Items */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Order Items ({currentOrder.items.length})
+              Order Items ({displayOrder.items.length})
             </h2>
             <div className="space-y-4">
-              {currentOrder.items.map((item, index) => (
+              {displayOrder.items.map((item, index) => (
                 <div key={index} className="flex items-center gap-4">
                   <img
                     src={item.image || "/placeholder-product.jpg"}
@@ -368,29 +408,29 @@ const OrderTracking = () => {
             <div className="mt-6 pt-4 border-t border-gray-200 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Subtotal</span>
-                <span>₹{currentOrder.pricing.subtotal.toFixed(2)}</span>
+                <span>₹{displayOrder.pricing.subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Shipping</span>
                 <span>
-                  {currentOrder.pricing.shipping === 0
+                  {displayOrder.pricing.shipping === 0
                     ? "Free"
-                    : `₹${currentOrder.pricing.shipping.toFixed(2)}`}
+                    : `₹${displayOrder.pricing.shipping.toFixed(2)}`}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Tax</span>
-                <span>₹{currentOrder.pricing.tax.toFixed(2)}</span>
+                <span>₹{displayOrder.pricing.tax.toFixed(2)}</span>
               </div>
-              {currentOrder.pricing.discount > 0 && (
+              {displayOrder.pricing.discount > 0 && (
                 <div className="flex justify-between text-sm text-green-600">
                   <span>Discount</span>
-                  <span>-₹{currentOrder.pricing.discount.toFixed(2)}</span>
+                  <span>-₹{displayOrder.pricing.discount.toFixed(2)}</span>
                 </div>
               )}
               <div className="flex justify-between font-bold text-lg pt-2 border-t border-gray-200">
                 <span>Total</span>
-                <span>₹{currentOrder.pricing.total.toFixed(2)}</span>
+                <span>₹{displayOrder.pricing.total.toFixed(2)}</span>
               </div>
             </div>
           </div>
@@ -405,19 +445,19 @@ const OrderTracking = () => {
               </h2>
               <div className="text-gray-600">
                 <p className="font-medium text-gray-900">
-                  {currentOrder.shippingAddress.firstName}{" "}
-                  {currentOrder.shippingAddress.lastName}
+                  {displayOrder.shippingAddress.firstName}{" "}
+                  {displayOrder.shippingAddress.lastName}
                 </p>
-                <p>{currentOrder.shippingAddress.address}</p>
-                {currentOrder.shippingAddress.apartment && (
-                  <p>{currentOrder.shippingAddress.apartment}</p>
+                <p>{displayOrder.shippingAddress.address}</p>
+                {displayOrder.shippingAddress.apartment && (
+                  <p>{displayOrder.shippingAddress.apartment}</p>
                 )}
                 <p>
-                  {currentOrder.shippingAddress.city},{" "}
-                  {currentOrder.shippingAddress.state}{" "}
-                  {currentOrder.shippingAddress.zipCode}
+                  {displayOrder.shippingAddress.city},{" "}
+                  {displayOrder.shippingAddress.state}{" "}
+                  {displayOrder.shippingAddress.zipCode}
                 </p>
-                <p>{currentOrder.shippingAddress.country}</p>
+                <p>{displayOrder.shippingAddress.country}</p>
               </div>
             </div>
 
@@ -429,11 +469,11 @@ const OrderTracking = () => {
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-gray-600">
                   <Mail size={16} />
-                  <span>{currentOrder.contact.email}</span>
+                  <span>{displayOrder.contact.email}</span>
                 </div>
                 <div className="flex items-center gap-2 text-gray-600">
                   <Phone size={16} />
-                  <span>{currentOrder.contact.phone}</span>
+                  <span>{displayOrder.contact.phone}</span>
                 </div>
               </div>
             </div>
@@ -447,29 +487,29 @@ const OrderTracking = () => {
                 <div className="flex justify-between">
                   <span>Method</span>
                   <span className="font-medium text-gray-900 capitalize">
-                    {currentOrder.payment.method}
+                    {displayOrder.payment.method}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Status</span>
                   <span
                     className={`font-medium ${
-                      currentOrder.payment.status === "completed"
+                      displayOrder.payment.status === "completed"
                         ? "text-green-600"
-                        : currentOrder.payment.status === "failed"
+                        : displayOrder.payment.status === "failed"
                         ? "text-red-600"
                         : "text-yellow-600"
                     }`}
                   >
-                    {currentOrder.payment.status.charAt(0).toUpperCase() +
-                      currentOrder.payment.status.slice(1)}
+                    {displayOrder.payment.status.charAt(0).toUpperCase() +
+                      displayOrder.payment.status.slice(1)}
                   </span>
                 </div>
-                {currentOrder.payment.razorpayPaymentId && (
+                {displayOrder.payment.razorpayPaymentId && (
                   <div className="flex justify-between">
                     <span>Payment ID</span>
                     <span className="font-mono text-sm">
-                      {currentOrder.payment.razorpayPaymentId}
+                      {displayOrder.payment.razorpayPaymentId}
                     </span>
                   </div>
                 )}
@@ -477,12 +517,12 @@ const OrderTracking = () => {
             </div>
 
             {/* Order Notes */}
-            {currentOrder.orderNotes && (
+            {displayOrder.orderNotes && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">
                   Order Notes
                 </h2>
-                <p className="text-gray-600">{currentOrder.orderNotes}</p>
+                <p className="text-gray-600">{displayOrder.orderNotes}</p>
               </div>
             )}
 
@@ -493,7 +533,7 @@ const OrderTracking = () => {
                 Order Timeline
               </h2>
               <div className="space-y-4">
-                {currentOrder.statusHistory
+                {displayOrder.statusHistory
                   ?.slice()
                   .reverse()
                   .map((history, index) => (

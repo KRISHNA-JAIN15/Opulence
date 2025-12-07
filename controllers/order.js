@@ -441,13 +441,8 @@ exports.updateOrderStatus = async (req, res) => {
 
     order.orderStatus = status;
 
-    // Add note to status history if provided
-    if (note) {
-      order.statusHistory[order.statusHistory.length - 1].note = note;
-    }
-
     // Update tracking info if provided
-    if (status === "shipped") {
+    if (status === "shipped" || status === "out_for_delivery") {
       order.tracking = {
         carrier: carrier || order.tracking?.carrier,
         trackingNumber: trackingNumber || order.tracking?.trackingNumber,
@@ -459,10 +454,19 @@ exports.updateOrderStatus = async (req, res) => {
 
     if (status === "delivered") {
       order.deliveredAt = new Date();
+      if (!order.tracking) {
+        order.tracking = {};
+      }
       order.tracking.actualDelivery = new Date();
     }
 
     await order.save();
+
+    // Add note to the latest status history entry after save (since pre-save hook adds it)
+    if (note && order.statusHistory.length > 0) {
+      order.statusHistory[order.statusHistory.length - 1].note = note;
+      await order.save();
+    }
 
     res.status(200).json({
       success: true,

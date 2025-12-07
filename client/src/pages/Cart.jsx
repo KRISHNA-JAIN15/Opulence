@@ -24,8 +24,16 @@ const Cart = () => {
   const { cartItems, cartTotal, cartQuantity } = useSelector(
     (state) => state.cart
   );
+  const { token } = useSelector((state) => state.auth);
   const [updatingItems, setUpdatingItems] = useState({});
   const hasSynced = useRef(false);
+
+  // Redirect to login if not logged in
+  useEffect(() => {
+    if (!token) {
+      navigate("/login");
+    }
+  }, [token, navigate]);
 
   // Sync cart prices with latest product data when component mounts
   useEffect(() => {

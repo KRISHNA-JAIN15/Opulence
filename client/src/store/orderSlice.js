@@ -171,14 +171,78 @@ export const cancelOrder = createAsyncThunk(
   }
 );
 
+// Admin: Get All Orders
+export const getAllOrders = createAsyncThunk(
+  "order/getAllOrders",
+  async (
+    { page = 1, limit = 20, status = "" } = {},
+    { getState, rejectWithValue }
+  ) => {
+    try {
+      const { auth } = getState();
+      const config = {
+        headers: {
+          Authorization: `Bearer ${auth.token}`,
+        },
+      };
+      const statusQuery = status ? `&status=${status}` : "";
+      const response = await axios.get(
+        `${API_URL}/orders/admin/all?page=${page}&limit=${limit}${statusQuery}`,
+        config
+      );
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to get orders"
+      );
+    }
+  }
+);
+
+// Admin: Update Order Status
+export const updateOrderStatus = createAsyncThunk(
+  "order/updateOrderStatus",
+  async (
+    { orderId, status, note, trackingNumber, carrier, estimatedDelivery },
+    { getState, rejectWithValue }
+  ) => {
+    try {
+      const { auth } = getState();
+      const config = {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${auth.token}`,
+        },
+      };
+      const response = await axios.put(
+        `${API_URL}/orders/admin/${orderId}/status`,
+        { status, note, trackingNumber, carrier, estimatedDelivery },
+        config
+      );
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to update order status"
+      );
+    }
+  }
+);
+
 const initialState = {
   orders: [],
+  adminOrders: [],
   currentOrder: null,
   razorpayKey: null,
   razorpayOrderId: null,
   pagination: {
     page: 1,
     limit: 10,
+    total: 0,
+    pages: 0,
+  },
+  adminPagination: {
+    page: 1,
+    limit: 20,
     total: 0,
     pages: 0,
   },
@@ -305,6 +369,41 @@ const orderSlice = createSlice({
         state.message = "Order cancelled successfully";
       })
       .addCase(cancelOrder.rejected, (state, action) => {
+        state.isLoading = false;
+        state.isError = true;
+        state.message = action.payload;
+      })
+      // Admin: Get All Orders
+      .addCase(getAllOrders.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(getAllOrders.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.adminOrders = action.payload.orders;
+        state.adminPagination = action.payload.pagination;
+      })
+      .addCase(getAllOrders.rejected, (state, action) => {
+        state.isLoading = false;
+        state.isError = true;
+        state.message = action.payload;
+      })
+      // Admin: Update Order Status
+      .addCase(updateOrderStatus.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(updateOrderStatus.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isSuccess = true;
+        // Update the order in the admin orders list
+        const index = state.adminOrders.findIndex(
+          (o) => o._id === action.payload.order._id
+        );
+        if (index !== -1) {
+          state.adminOrders[index] = action.payload.order;
+        }
+        state.message = "Order status updated successfully";
+      })
+      .addCase(updateOrderStatus.rejected, (state, action) => {
         state.isLoading = false;
         state.isError = true;
         state.message = action.payload;

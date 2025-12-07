@@ -37,7 +37,14 @@ const getAllProducts = async (req, res) => {
     }
 
     if (search) {
-      filter.$text = { $search: search };
+      // Use regex for partial matching (case-insensitive)
+      const searchRegex = new RegExp(search.trim(), "i");
+      filter.$or = [
+        { name: searchRegex },
+        { category: searchRegex },
+        { brand: searchRegex },
+        { description: searchRegex },
+      ];
     }
 
     // Calculate pagination
@@ -166,8 +173,8 @@ const createProduct = async (req, res) => {
     const product = await Product.create({
       name,
       description,
-      price,
-      inStock: inStock || 0,
+      price: Number(price),
+      inStock: Number(inStock) || 0,
       category,
       brand,
       sku,
@@ -179,9 +186,10 @@ const createProduct = async (req, res) => {
       origin,
       tags,
       keyFeatures,
-      isActive: isActive !== undefined ? isActive : true,
-      featured: featured || false,
-      discount: discount || 0,
+      isActive:
+        isActive === "true" || isActive === true || isActive === undefined,
+      featured: featured === "true" || featured === true,
+      discount: Number(discount) || 0,
       image: mainImage.url,
       cloudinaryPublicId: mainImage.publicId,
       images: imageUploads,
@@ -240,8 +248,8 @@ const updateProduct = async (req, res) => {
     // Update fields
     if (name) product.name = name;
     if (description) product.description = description;
-    if (price !== undefined) product.price = price;
-    if (inStock !== undefined) product.inStock = inStock;
+    if (price !== undefined) product.price = Number(price);
+    if (inStock !== undefined) product.inStock = Number(inStock);
     if (category) product.category = category;
     if (brand !== undefined) product.brand = brand;
     if (sku !== undefined) product.sku = sku;
@@ -253,9 +261,11 @@ const updateProduct = async (req, res) => {
     if (origin !== undefined) product.origin = origin;
     if (tags !== undefined) product.tags = tags;
     if (keyFeatures !== undefined) product.keyFeatures = keyFeatures;
-    if (isActive !== undefined) product.isActive = isActive;
-    if (featured !== undefined) product.featured = featured;
-    if (discount !== undefined) product.discount = discount;
+    if (isActive !== undefined)
+      product.isActive = isActive === "true" || isActive === true;
+    if (featured !== undefined)
+      product.featured = featured === "true" || featured === true;
+    if (discount !== undefined) product.discount = Number(discount);
 
     // If new images are uploaded
     if (req.files && req.files.length > 0) {
@@ -549,6 +559,48 @@ const getProductsByIds = async (req, res) => {
   }
 };
 
+// @desc    Quick search products (for live search dropdown)
+// @route   GET /api/products/search/quick
+// @access  Public
+const searchProducts = async (req, res) => {
+  try {
+    const { q, limit = 5 } = req.query;
+
+    if (!q || q.trim().length < 1) {
+      return res.status(200).json({
+        success: true,
+        products: [],
+      });
+    }
+
+    // Use regex for partial matching (case-insensitive)
+    const searchRegex = new RegExp(q.trim(), "i");
+
+    const products = await Product.find({
+      isActive: true,
+      $or: [
+        { name: searchRegex },
+        { category: searchRegex },
+        { brand: searchRegex },
+        { description: searchRegex },
+      ],
+    })
+      .limit(Number(limit))
+      .select("name price image discount inStock category");
+
+    res.status(200).json({
+      success: true,
+      products,
+    });
+  } catch (error) {
+    console.error("Quick search error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to search products",
+    });
+  }
+};
+
 module.exports = {
   getAllProducts,
   getProductById,
@@ -561,4 +613,5 @@ module.exports = {
   getDiscountedProducts,
   getRelatedProducts,
   getProductsByIds,
+  searchProducts,
 };

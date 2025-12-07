@@ -31,6 +31,7 @@ import AddProduct from "./pages/admin/AddProduct";
 import EditProduct from "./pages/admin/EditProduct";
 import AdminUsers from "./pages/admin/Users";
 import AdminInventory from "./pages/admin/Inventory";
+import AdminOrders from "./pages/admin/Orders";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ScrollToTop from "./components/ScrollToTop";
 import PageLoader from "./components/PageLoader";
@@ -125,6 +126,14 @@ function AppContent() {
             element={
               <AdminLayout>
                 <AdminInventory />
+              </AdminLayout>
+            }
+          />
+          <Route
+            path="/admin/orders"
+            element={
+              <AdminLayout>
+                <AdminOrders />
               </AdminLayout>
             }
           />

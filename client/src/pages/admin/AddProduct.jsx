@@ -258,7 +258,9 @@ const AddProduct = () => {
                   type="number"
                   min="0"
                   max="100"
+                  step="1"
                   {...register("discount", {
+                    valueAsNumber: true,
                     min: {
                       value: 0,
                       message: "Discount cannot be negative",

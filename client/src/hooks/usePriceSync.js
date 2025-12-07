@@ -73,7 +73,26 @@ export function usePriceSync(toast) {
     discountedProducts,
   ]);
 
-  // Check for changes and show toasts
+  // Get IDs of products in cart or wishlist (for toast notifications)
+  const getImportantProductIds = useCallback(() => {
+    const ids = new Set();
+
+    // Add cart items
+    cartItems.forEach((item) => ids.add(item._id));
+
+    // Add wishlist items
+    wishlistItems.forEach((item) => {
+      if (item.product?._id) {
+        ids.add(item.product._id);
+      } else if (item._id) {
+        ids.add(item._id);
+      }
+    });
+
+    return ids;
+  }, [cartItems, wishlistItems]);
+
+  // Check for changes and show toasts (only for cart/wishlist items)
   const checkForChangesAndNotify = useCallback(
     (updatedProducts) => {
       if (!toast || isFirstRun.current) {
@@ -89,10 +108,14 @@ export function usePriceSync(toast) {
         return;
       }
 
+      // Only show toasts for items in cart or wishlist
+      const importantIds = getImportantProductIds();
+
       updatedProducts.forEach((product) => {
         const prev = previousDataRef.current.get(product._id);
+        const isImportant = importantIds.has(product._id);
 
-        if (prev) {
+        if (prev && isImportant) {
           // Check for price changes
           if (prev.price !== product.price) {
             const direction =
@@ -151,7 +174,7 @@ export function usePriceSync(toast) {
           }
         }
 
-        // Update stored data
+        // Update stored data for all products (not just important ones)
         previousDataRef.current.set(product._id, {
           price: product.price,
           discount: product.discount,
@@ -159,8 +182,52 @@ export function usePriceSync(toast) {
         });
       });
     },
-    [toast]
+    [toast, getImportantProductIds]
   );
+
+  // Refetch discounted and featured products to catch new discounts
+  const refetchSpecialProducts = useCallback(async () => {
+    try {
+      const [discountedRes, featuredRes] = await Promise.all([
+        axios.get(`${API_URL}/discounted?limit=8`),
+        axios.get(`${API_URL}/featured?limit=8`),
+      ]);
+
+      const newDiscounted = discountedRes.data.data || [];
+      const newFeatured = featuredRes.data.data || [];
+
+      // Check if discounted products changed (different products or count)
+      const currentDiscountedIds = discountedProducts
+        .map((p) => p._id)
+        .sort()
+        .join(",");
+      const newDiscountedIds = newDiscounted
+        .map((p) => p._id)
+        .sort()
+        .join(",");
+
+      if (currentDiscountedIds !== newDiscountedIds) {
+        dispatch(updateProductsSilently({ discountedProducts: newDiscounted }));
+      }
+
+      // Check if featured products changed
+      const currentFeaturedIds = featuredProducts
+        .map((p) => p._id)
+        .sort()
+        .join(",");
+      const newFeaturedIds = newFeatured
+        .map((p) => p._id)
+        .sort()
+        .join(",");
+
+      if (currentFeaturedIds !== newFeaturedIds) {
+        dispatch(updateProductsSilently({ featuredProducts: newFeatured }));
+      }
+    } catch (error) {
+      // Silently fail
+      console.error("Refetch special products error:", error.message);
+    }
+  }, [dispatch, discountedProducts, featuredProducts]);
 
   // Sync function
   const syncPrices = useCallback(async () => {
@@ -168,6 +235,8 @@ export function usePriceSync(toast) {
 
     // Skip if no products to sync
     if (productIds.length === 0) {
+      // Still refetch special products even if no products to sync
+      await refetchSpecialProducts();
       return;
     }
 
@@ -327,6 +396,9 @@ export function usePriceSync(toast) {
           );
         }
       }
+
+      // Refetch discounted and featured products to catch newly added discounts
+      await refetchSpecialProducts();
     } catch (error) {
       // Silently fail - don't show errors for background sync
       console.error("Price sync error:", error.message);
@@ -341,6 +413,7 @@ export function usePriceSync(toast) {
     products,
     featuredProducts,
     discountedProducts,
+    refetchSpecialProducts,
   ]);
 
   // Set up interval

@@ -7,6 +7,7 @@ import {
   removeFromWishlist,
   getWishlist,
 } from "../store/wishlistSlice";
+import { addToCart } from "../store/cartSlice";
 import {
   Search,
   Grid,
@@ -429,6 +430,24 @@ const ProductCard = ({
     }
   };
 
+  const handleAddToCart = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dispatch(addToCart({ product, quantity: 1 }));
+
+    // Simple success feedback
+    const button = e.target.closest("button");
+    const originalText = button.innerHTML;
+    button.innerHTML =
+      '<span class="flex items-center justify-center gap-2">Added!</span>';
+    button.style.backgroundColor = "#22c55e";
+
+    setTimeout(() => {
+      button.innerHTML = originalText;
+      button.style.backgroundColor = "";
+    }, 1500);
+  };
+
   if (viewMode === "list") {
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 flex gap-4 hover:shadow-md transition relative">
@@ -527,6 +546,7 @@ const ProductCard = ({
                 View Details
               </Link>
               <button
+                onClick={handleAddToCart}
                 disabled={product.inStock === 0}
                 className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg font-medium hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-400 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -637,6 +657,7 @@ const ProductCard = ({
             View Details
           </Link>
           <button
+            onClick={handleAddToCart}
             disabled={product.inStock === 0}
             className="flex items-center justify-center gap-2 px-4 py-2 bg-black text-white rounded-lg font-medium hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-400 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >

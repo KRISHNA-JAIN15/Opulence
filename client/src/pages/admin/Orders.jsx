@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
+import axios from "axios";
 import {
   getAllOrders,
   updateOrderStatus,
   resetOrderState,
+  syncAdminOrders,
 } from "../../store/orderSlice";
 import {
   Package,
@@ -21,6 +23,9 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
+// Auto-refresh interval in milliseconds (5 seconds)
+const SYNC_INTERVAL = 5000;
+
 const AdminOrders = () => {
   const dispatch = useDispatch();
   const {
@@ -31,7 +36,7 @@ const AdminOrders = () => {
     isError,
     message,
   } = useSelector((state) => state.order);
-  const { user } = useSelector((state) => state.auth);
+  const { user, token } = useSelector((state) => state.auth);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -47,11 +52,92 @@ const AdminOrders = () => {
     type: "",
     message: "",
   });
+  const [newOrderCount, setNewOrderCount] = useState(0);
 
+  // Refs for auto-refresh
+  const syncIntervalRef = useRef(null);
+  const previousOrderCountRef = useRef(0);
+  const isFirstSyncRef = useRef(true);
+
+  // Initial load
   useEffect(() => {
     dispatch(getAllOrders({ page: 1, limit: 20, status: statusFilter }));
     return () => dispatch(resetOrderState());
   }, [dispatch, statusFilter]);
+
+  // Auto-refresh orders silently every 5 seconds
+  const syncOrders = useCallback(async () => {
+    if (!token) return;
+
+    try {
+      const statusQuery = statusFilter ? `&status=${statusFilter}` : "";
+      const response = await axios.get(
+        `http://localhost:3000/api/orders/admin/all?page=${
+          adminPagination?.page || 1
+        }&limit=20${statusQuery}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const fetchedOrders = response.data.orders || [];
+      const fetchedTotal = response.data.pagination?.total || 0;
+
+      // Check for new orders (only after first sync)
+      if (!isFirstSyncRef.current) {
+        const currentTotal = previousOrderCountRef.current;
+        if (fetchedTotal > currentTotal) {
+          const newCount = fetchedTotal - currentTotal;
+          setNewOrderCount((prev) => prev + newCount);
+          setNotification({
+            show: true,
+            type: "success",
+            message: `${newCount} new order${
+              newCount > 1 ? "s" : ""
+            } received!`,
+          });
+          setTimeout(
+            () => setNotification({ show: false, type: "", message: "" }),
+            3000
+          );
+        }
+      }
+
+      isFirstSyncRef.current = false;
+      previousOrderCountRef.current = fetchedTotal;
+
+      // Update orders in Redux store silently
+      dispatch(
+        syncAdminOrders({
+          orders: fetchedOrders,
+          pagination: response.data.pagination,
+        })
+      );
+    } catch (error) {
+      // Silently fail - don't show errors for background sync
+      console.error("Order sync error:", error.message);
+    }
+  }, [token, statusFilter, adminPagination?.page, dispatch]);
+
+  // Set up auto-refresh interval
+  useEffect(() => {
+    if (!token || user?.type !== "admin") return;
+
+    // Run initial sync after a short delay
+    const initialTimeout = setTimeout(syncOrders, 1000);
+
+    // Set up interval for continuous sync
+    syncIntervalRef.current = setInterval(syncOrders, SYNC_INTERVAL);
+
+    return () => {
+      clearTimeout(initialTimeout);
+      if (syncIntervalRef.current) {
+        clearInterval(syncIntervalRef.current);
+      }
+    };
+  }, [token, user?.type, syncOrders]);
 
   useEffect(() => {
     if (isSuccess && message) {
@@ -241,12 +327,35 @@ const AdminOrders = () => {
 
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-black text-gray-900 uppercase tracking-wide">
-          Order Management
-        </h1>
-        <p className="text-gray-600 mt-2">
-          View and update order statuses to keep customers informed.
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-black text-gray-900 uppercase tracking-wide">
+              Order Management
+            </h1>
+            <p className="text-gray-600 mt-2">
+              View and update order statuses to keep customers informed.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            {newOrderCount > 0 && (
+              <div className="flex items-center gap-2 bg-green-100 text-green-800 px-4 py-2 rounded-lg">
+                <span className="font-semibold">
+                  {newOrderCount} new order{newOrderCount > 1 ? "s" : ""}
+                </span>
+                <button
+                  onClick={() => setNewOrderCount(0)}
+                  className="text-green-600 hover:text-green-800"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <RefreshCw size={16} className="animate-spin-slow" />
+              <span>Auto-refreshing</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Filters */}

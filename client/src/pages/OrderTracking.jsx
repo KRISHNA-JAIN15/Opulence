@@ -169,7 +169,8 @@ const OrderTracking = () => {
     return !nonCancellable.includes(displayOrder?.orderStatus);
   };
 
-  if (isLoading) {
+  // Show loading state if loading OR if we don't have data yet and no error
+  if (isLoading || (!displayOrder && !isError)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>

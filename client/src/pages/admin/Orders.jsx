@@ -229,6 +229,47 @@ const AdminOrders = () => {
     },
   ];
 
+  // Get allowed status transitions based on current status
+  const getAllowedStatuses = (currentStatus, hasReturnRequest) => {
+    // If there's an active return request, don't allow status changes
+    if (hasReturnRequest) {
+      return [];
+    }
+
+    // Define valid transitions for each status
+    const transitions = {
+      pending: ["confirmed", "processing", "cancelled"],
+      confirmed: ["processing", "shipped", "cancelled"],
+      processing: ["shipped", "cancelled"],
+      shipped: ["out_for_delivery", "delivered"],
+      out_for_delivery: ["delivered"],
+      delivered: [], // No changes allowed after delivery (returns handled separately)
+      cancelled: [], // No changes allowed after cancellation
+      returned: [], // No changes allowed after return
+    };
+
+    return transitions[currentStatus] || [];
+  };
+
+  // Filter status options for the update modal
+  const getAvailableStatusOptions = (order) => {
+    if (!order) return [];
+
+    const hasActiveReturn =
+      order.returnRequest?.isRequested &&
+      !["completed", "rejected"].includes(order.returnRequest?.status);
+
+    const allowedStatuses = getAllowedStatuses(
+      order.orderStatus,
+      hasActiveReturn
+    );
+
+    return statusOptions.filter(
+      (opt) =>
+        allowedStatuses.includes(opt.value) && !opt.value.startsWith("return_")
+    );
+  };
+
   const getStatusColor = (status) => {
     const option = statusOptions.find((opt) => opt.value === status);
     return option ? option.color : "bg-gray-100 text-gray-800";
@@ -259,6 +300,30 @@ const AdminOrders = () => {
       default:
         return <Package size={16} />;
     }
+  };
+
+  const getReturnStatusColor = (status) => {
+    const colors = {
+      pending: "bg-amber-100 text-amber-800",
+      approved: "bg-cyan-100 text-cyan-800",
+      in_transit: "bg-violet-100 text-violet-800",
+      received: "bg-teal-100 text-teal-800",
+      completed: "bg-emerald-100 text-emerald-800",
+      rejected: "bg-rose-100 text-rose-800",
+    };
+    return colors[status] || "bg-gray-100 text-gray-800";
+  };
+
+  const getReturnStatusLabel = (status) => {
+    const labels = {
+      pending: "Return Pending",
+      approved: "Return Approved",
+      in_transit: "Return In Transit",
+      received: "Return Received",
+      completed: "Return Completed",
+      rejected: "Return Rejected",
+    };
+    return labels[status] || `Return ${status}`;
   };
 
   const filteredOrders =
@@ -501,7 +566,7 @@ const AdminOrders = () => {
                 {/* Order Header */}
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
+                    <div className="flex items-center gap-3 mb-2 flex-wrap">
                       <span className="font-bold text-gray-900">
                         #{order.orderNumber}
                       </span>
@@ -513,6 +578,16 @@ const AdminOrders = () => {
                         {getStatusIcon(order.orderStatus)}
                         {getStatusLabel(order.orderStatus)}
                       </span>
+                      {order.returnRequest?.isRequested && (
+                        <span
+                          className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${getReturnStatusColor(
+                            order.returnRequest.status
+                          )}`}
+                        >
+                          <RefreshCw size={14} />
+                          {getReturnStatusLabel(order.returnRequest.status)}
+                        </span>
+                      )}
                     </div>
                     <div className="text-sm text-gray-600 space-y-1">
                       <p>
@@ -929,17 +1004,39 @@ const AdminOrders = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   New Status
                 </label>
-                <select
-                  value={newStatus}
-                  onChange={(e) => setNewStatus(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition"
-                >
-                  {statusOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                {getAvailableStatusOptions(updateModal.order).length > 0 ? (
+                  <select
+                    value={newStatus}
+                    onChange={(e) => setNewStatus(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition"
+                  >
+                    <option value="">Select new status...</option>
+                    {getAvailableStatusOptions(updateModal.order).map(
+                      (option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      )
+                    )}
+                  </select>
+                ) : (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                    <p className="text-gray-600 text-sm">
+                      {updateModal.order?.returnRequest?.isRequested &&
+                      !["completed", "rejected"].includes(
+                        updateModal.order?.returnRequest?.status
+                      )
+                        ? "Status cannot be changed while a return is in progress."
+                        : updateModal.order?.orderStatus === "delivered"
+                        ? "Order has been delivered. No further status changes allowed."
+                        : updateModal.order?.orderStatus === "cancelled"
+                        ? "Order has been cancelled. No status changes allowed."
+                        : updateModal.order?.orderStatus === "returned"
+                        ? "Order has been returned. No status changes allowed."
+                        : "No status changes available for this order."}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Status Note */}
@@ -1011,8 +1108,12 @@ const AdminOrders = () => {
               </button>
               <button
                 onClick={handleUpdateStatus}
-                disabled={isLoading}
-                className="flex-1 bg-black text-white py-2 px-4 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
+                disabled={
+                  isLoading ||
+                  !newStatus ||
+                  getAvailableStatusOptions(updateModal.order).length === 0
+                }
+                className="flex-1 bg-black text-white py-2 px-4 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? "Updating..." : "Update Status"}
               </button>

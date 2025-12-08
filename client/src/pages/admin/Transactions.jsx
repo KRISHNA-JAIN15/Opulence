@@ -229,13 +229,23 @@ const Transactions = () => {
             Track your business finances and analytics
           </p>
         </div>
-        <button
-          onClick={exportToCSV}
-          className="mt-4 md:mt-0 flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
-        >
-          <Download className="w-4 h-4" />
-          Export CSV
-        </button>
+        <div className="mt-4 md:mt-0 flex items-center gap-3">
+          <button
+            onClick={() => setFilters({ ...filters })}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+          <button
+            onClick={exportToCSV}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            Export CSV
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -245,13 +255,39 @@ const Transactions = () => {
       ) : (
         <>
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
             <SummaryCard
-              title="Total Revenue"
-              value={formatCurrency(summary?.overall?.totalRevenue)}
+              title="Total Inflow"
+              value={formatCurrency(summary?.overall?.totalInflow)}
               subValue={`${summary?.overall?.totalOrders || 0} orders`}
-              icon={DollarSign}
+              icon={TrendingUp}
               color="bg-green-500"
+            />
+            <SummaryCard
+              title="Total Outflow"
+              value={formatCurrency(summary?.overall?.totalOutflow)}
+              subValue={`Refunds: ${formatCurrency(
+                summary?.byType?.find((t) => t._id === "refund")?.totalAmount ||
+                  0
+              )}`}
+              icon={TrendingDown}
+              color="bg-red-500"
+            />
+            <SummaryCard
+              title="Net Balance"
+              value={formatCurrency(summary?.overall?.netBalance)}
+              subValue={
+                summary?.overall?.netBalance >= 0
+                  ? "You're in profit!"
+                  : "You're at loss"
+              }
+              icon={DollarSign}
+              color={
+                summary?.overall?.netBalance >= 0
+                  ? "bg-emerald-500"
+                  : "bg-rose-500"
+              }
+              trend={summary?.overall?.netBalance >= 0 ? "up" : "down"}
             />
             <SummaryCard
               title="Total Cost"
@@ -269,19 +305,61 @@ const Transactions = () => {
               color="bg-purple-500"
               trend={summary?.overall?.netProfit > 0 ? "up" : "down"}
             />
-            <SummaryCard
-              title="Total Inflow"
-              value={formatCurrency(summary?.overall?.totalInflow)}
-              subValue={`Outflow: ${formatCurrency(
-                summary?.overall?.totalOutflow
-              )}`}
-              icon={TrendingDown}
-              color="bg-orange-500"
-            />
+          </div>
+
+          {/* Cash Flow Summary */}
+          <div className="bg-gradient-to-r from-gray-900 to-gray-800 rounded-xl shadow-lg p-6 mb-8">
+            <h2 className="text-lg font-semibold text-white mb-4">
+              💰 Cash Flow Summary
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="text-center">
+                <p className="text-green-400 text-sm font-medium mb-1">
+                  Total Money In
+                </p>
+                <p className="text-3xl font-bold text-green-400">
+                  {formatCurrency(summary?.overall?.totalInflow)}
+                </p>
+                <p className="text-gray-400 text-xs mt-1">
+                  From sales, tax, etc.
+                </p>
+              </div>
+              <div className="text-center border-l border-r border-gray-700 px-4">
+                <p className="text-red-400 text-sm font-medium mb-1">
+                  Total Money Out
+                </p>
+                <p className="text-3xl font-bold text-red-400">
+                  {formatCurrency(summary?.overall?.totalOutflow)}
+                </p>
+                <p className="text-gray-400 text-xs mt-1">
+                  Refunds, inventory costs
+                </p>
+              </div>
+              <div className="text-center">
+                <p className="text-white text-sm font-medium mb-1">
+                  Net Position
+                </p>
+                <p
+                  className={`text-3xl font-bold ${
+                    summary?.overall?.netBalance >= 0
+                      ? "text-emerald-400"
+                      : "text-rose-400"
+                  }`}
+                >
+                  {summary?.overall?.netBalance >= 0 ? "+" : ""}
+                  {formatCurrency(summary?.overall?.netBalance)}
+                </p>
+                <p className="text-gray-400 text-xs mt-1">
+                  {summary?.overall?.netBalance >= 0
+                    ? "You're profitable! 🎉"
+                    : "Watch your expenses"}
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Secondary Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-green-100 rounded-lg">
@@ -294,6 +372,19 @@ const Transactions = () => {
                       summary?.byType?.find((t) => t._id === "sale")
                         ?.totalAmount || 0
                     )}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-100 rounded-lg">
+                  <Percent className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Tax Collected</p>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {formatCurrency(summary?.overall?.totalTaxCollected || 0)}
                   </p>
                 </div>
               </div>

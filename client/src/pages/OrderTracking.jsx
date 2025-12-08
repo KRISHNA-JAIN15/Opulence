@@ -156,6 +156,30 @@ const OrderTracking = () => {
     return labels[status] || status;
   };
 
+  const getReturnStatusColor = (status) => {
+    const colors = {
+      pending: "text-amber-700 bg-amber-100",
+      approved: "text-cyan-700 bg-cyan-100",
+      in_transit: "text-violet-700 bg-violet-100",
+      received: "text-teal-700 bg-teal-100",
+      completed: "text-emerald-700 bg-emerald-100",
+      rejected: "text-rose-700 bg-rose-100",
+    };
+    return colors[status] || "text-gray-600 bg-gray-100";
+  };
+
+  const getReturnStatusLabel = (status) => {
+    const labels = {
+      pending: "Return Pending",
+      approved: "Return Approved",
+      in_transit: "Return In Transit",
+      received: "Return Received",
+      completed: "Return Completed - Refunded",
+      rejected: "Return Rejected",
+    };
+    return labels[status] || `Return ${status}`;
+  };
+
   const orderSteps = [
     { status: "confirmed", label: "Order Confirmed", icon: CheckCircle },
     { status: "processing", label: "Processing", icon: Package },
@@ -355,9 +379,13 @@ const OrderTracking = () => {
                   Return Order ({getDaysLeftForReturn()} days left)
                 </button>
               ) : displayOrder.returnRequest?.isRequested ? (
-                <span className="inline-flex items-center gap-1 text-sm text-orange-600">
+                <span
+                  className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${getReturnStatusColor(
+                    displayOrder.returnRequest.status
+                  )}`}
+                >
                   <RotateCcw size={14} />
-                  Return {displayOrder.returnRequest.status}
+                  {getReturnStatusLabel(displayOrder.returnRequest.status)}
                 </span>
               ) : (
                 displayOrder.orderStatus !== "cancelled" &&

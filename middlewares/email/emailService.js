@@ -90,9 +90,29 @@ const sendCouponPromoEmail = async (
   }
 };
 
+// Generic email sender for custom templates
+const sendEmail = async (email, subject, htmlContent) => {
+  try {
+    const mailOptions = {
+      from: `"Opulence" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: subject,
+      html: htmlContent,
+    };
+
+    const result = await transporter.sendMail(mailOptions);
+    console.log("Email sent successfully:", result.messageId);
+    return { success: true, messageId: result.messageId };
+  } catch (error) {
+    console.error("Error sending email:", error);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   sendVerificationEmail,
   sendWelcomeEmail,
   sendPasswordResetEmail,
   sendCouponPromoEmail,
+  sendEmail,
 };

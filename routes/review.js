@@ -5,6 +5,7 @@ const {
   updateReview,
   deleteReview,
   markHelpful,
+  canReviewProduct,
 } = require("../controllers/review");
 const { authenticateToken } = require("../middlewares/auth/auth");
 
@@ -14,6 +15,7 @@ const router = express.Router();
 router.get("/product/:productId", getProductReviews);
 
 // Protected routes
+router.get("/can-review/:productId", authenticateToken, canReviewProduct);
 router.post("/", authenticateToken, createReview);
 router.put("/:id", authenticateToken, updateReview);
 router.delete("/:id", authenticateToken, deleteReview);

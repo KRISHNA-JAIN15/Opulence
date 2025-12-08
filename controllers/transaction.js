@@ -52,13 +52,11 @@ const getTransactions = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: transactions,
-      pagination: {
-        total,
-        page: Number(page),
-        pages: Math.ceil(total / Number(limit)),
-        limit: Number(limit),
-      },
+      transactions: transactions,
+      total,
+      currentPage: Number(page),
+      totalPages: Math.ceil(total / Number(limit)),
+      limit: Number(limit),
     });
   } catch (error) {
     console.error("Get transactions error:", error);
@@ -98,12 +96,14 @@ const getTransactionSummary = async (req, res) => {
     let totalProfit = 0;
     let totalInflow = 0;
     let totalOutflow = 0;
+    let totalTaxCollected = 0;
     let salesCount = 0;
     let refundCount = 0;
     let inventoryAddCount = 0;
 
     const byType = {
       sale: { count: 0, amount: 0, profit: 0 },
+      tax_collected: { count: 0, amount: 0 },
       inventory_add: { count: 0, amount: 0 },
       refund: { count: 0, amount: 0 },
       expense: { count: 0, amount: 0 },
@@ -121,10 +121,17 @@ const getTransactionSummary = async (req, res) => {
         totalRevenue += txn.amount;
         totalCost += txn.costAmount || 0;
         totalProfit += txn.profit || 0;
+        // Extract tax from metadata (now embedded in sale transactions)
+        totalTaxCollected += txn.metadata?.tax || 0;
         salesCount++;
         byType.sale.count++;
         byType.sale.amount += txn.amount;
         byType.sale.profit += txn.profit || 0;
+      } else if (txn.type === "tax_collected") {
+        // Legacy support for old tax_collected transactions
+        totalTaxCollected += txn.amount;
+        byType.tax_collected.count++;
+        byType.tax_collected.amount += txn.amount;
       } else if (txn.type === "refund") {
         refundCount++;
         byType.refund.count++;
@@ -143,6 +150,7 @@ const getTransactionSummary = async (req, res) => {
     });
 
     const avgMargin = salesCount > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+    const netBalance = totalInflow - totalOutflow;
 
     // Get daily breakdown for charts
     const dailyBreakdown = await Transaction.aggregate([
@@ -213,21 +221,60 @@ const getTransactionSummary = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      summary: {
+      overall: {
         totalRevenue,
         totalCost,
-        totalProfit,
+        netProfit: totalProfit,
+        profitMargin: avgMargin,
         totalInflow,
         totalOutflow,
-        netFlow: totalInflow - totalOutflow,
-        avgMargin: avgMargin.toFixed(2),
-        salesCount,
+        netBalance,
+        totalTaxCollected,
+        totalOrders: salesCount,
         refundCount,
         inventoryAddCount,
-        byType,
       },
+      byType: [
+        {
+          _id: "sale",
+          count: byType.sale.count,
+          totalAmount: byType.sale.amount,
+          profit: byType.sale.profit,
+        },
+        {
+          _id: "tax_collected",
+          count: byType.tax_collected.count,
+          totalAmount: byType.tax_collected.amount,
+        },
+        {
+          _id: "inventory_add",
+          count: byType.inventory_add.count,
+          totalAmount: byType.inventory_add.amount,
+        },
+        {
+          _id: "refund",
+          count: byType.refund.count,
+          totalAmount: byType.refund.amount,
+        },
+        {
+          _id: "expense",
+          count: byType.expense.count,
+          totalAmount: byType.expense.amount,
+        },
+        {
+          _id: "coupon_discount",
+          count: byType.coupon_discount.count,
+          totalAmount: byType.coupon_discount.amount,
+        },
+      ],
       dailyBreakdown,
-      topProducts,
+      topProducts: topProducts.map((p) => ({
+        _id: p._id,
+        productName: p.product?.name || "Unknown Product",
+        totalSold: p.quantity || 0,
+        revenue: p.totalSales || 0,
+        profit: p.totalProfit || 0,
+      })),
     });
   } catch (error) {
     console.error("Get transaction summary error:", error);
@@ -256,24 +303,41 @@ const recordSaleFromOrder = async (order) => {
   try {
     const transactions = [];
 
+    // Calculate total subtotal to determine tax ratio per item
+    const subtotal = order.items.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    );
+    const totalTax = order.pricing?.tax || 0;
+
     for (const item of order.items) {
       const product = await Product.findById(item.product);
-      const sellingPrice = item.price * item.quantity;
+      const itemSubtotal = item.price * item.quantity;
+
+      // Calculate proportional tax for this item
+      const itemTaxRatio = subtotal > 0 ? itemSubtotal / subtotal : 0;
+      const itemTax = totalTax * itemTaxRatio;
+
+      // Total amount = subtotal + proportional tax (this is what user actually paid for this item)
+      const totalAmount = itemSubtotal + itemTax;
+
       const costPrice = (product?.costPrice || 0) * item.quantity;
       const discount = item.discount || 0;
-      const profit = sellingPrice - costPrice - discount;
-      const margin = sellingPrice > 0 ? (profit / sellingPrice) * 100 : 0;
+      const profit = totalAmount - costPrice - discount;
+      const margin = totalAmount > 0 ? (profit / totalAmount) * 100 : 0;
 
       const txn = await Transaction.create({
         type: "sale",
         order: order._id,
         product: item.product,
         user: order.user,
-        amount: sellingPrice,
+        amount: totalAmount, // Full amount including tax
         costAmount: costPrice,
         profit,
         margin,
-        description: `Sale: ${item.name} x ${item.quantity}`,
+        description: `Sale: ${item.name} x ${
+          item.quantity
+        } (incl. tax ₹${itemTax.toFixed(2)})`,
         quantity: item.quantity,
         sellingPrice: item.price,
         discount,
@@ -282,6 +346,8 @@ const recordSaleFromOrder = async (order) => {
         metadata: {
           orderNumber: order.orderNumber,
           productName: item.name,
+          subtotal: itemSubtotal,
+          tax: itemTax,
         },
       });
       transactions.push(txn);

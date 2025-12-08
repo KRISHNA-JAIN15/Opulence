@@ -1,5 +1,6 @@
 const Review = require("../models/review");
 const Product = require("../models/product");
+const Order = require("../models/order");
 const mongoose = require("mongoose");
 
 const getProductReviews = async (req, res) => {
@@ -286,10 +287,62 @@ const markHelpful = async (req, res) => {
   }
 };
 
+// @desc    Check if user can review a product (has purchased and not already reviewed)
+// @route   GET /api/reviews/can-review/:productId
+// @access  Private
+const canReviewProduct = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const userId = req.user._id;
+
+    // Check if user has purchased this product (order delivered)
+    const hasPurchased = await Order.findOne({
+      user: userId,
+      "items.product": productId,
+      orderStatus: "delivered",
+    });
+
+    if (!hasPurchased) {
+      return res.status(200).json({
+        success: true,
+        canReview: false,
+        reason: "You can only review products you have purchased and received.",
+      });
+    }
+
+    // Check if user has already reviewed this product
+    const existingReview = await Review.findOne({
+      user: userId,
+      product: productId,
+    });
+
+    if (existingReview) {
+      return res.status(200).json({
+        success: true,
+        canReview: false,
+        reason: "You have already reviewed this product.",
+        existingReview: existingReview._id,
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      canReview: true,
+    });
+  } catch (error) {
+    console.error("Can review check error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to check review eligibility",
+    });
+  }
+};
+
 module.exports = {
   getProductReviews,
   createReview,
   updateReview,
   deleteReview,
   markHelpful,
+  canReviewProduct,
 };

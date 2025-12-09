@@ -5,7 +5,9 @@ import { Search, ShoppingCart, User, Menu, X, Heart } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 
-const API_URL = "http://localhost:3000/api/products";
+const API_URL = `${
+  import.meta.env.VITE_API_URL || "http://localhost:3000/api"
+}/products`;
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);

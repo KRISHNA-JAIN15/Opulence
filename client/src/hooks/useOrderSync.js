@@ -3,7 +3,9 @@ import { useSelector, useDispatch } from "react-redux";
 import axios from "axios";
 import { syncUserOrders } from "../store/orderSlice";
 
-const API_URL = "http://localhost:3000/api/orders";
+const API_URL = `${
+  import.meta.env.VITE_API_URL || "http://localhost:3000/api"
+}/orders`;
 
 // Sync interval in milliseconds (5 seconds for orders list)
 const SYNC_INTERVAL = 5000;

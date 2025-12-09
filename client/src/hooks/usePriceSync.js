@@ -5,7 +5,9 @@ import { updateCartItemsSilently } from "../store/cartSlice";
 import { updateWishlistItemsSilently } from "../store/wishlistSlice";
 import { updateProductsSilently } from "../store/productSlice";
 
-const API_URL = "http://localhost:3000/api/products";
+const API_URL = `${
+  import.meta.env.VITE_API_URL || "http://localhost:3000/api"
+}/products`;
 
 // Interval in milliseconds (3 seconds)
 const SYNC_INTERVAL = 3000;

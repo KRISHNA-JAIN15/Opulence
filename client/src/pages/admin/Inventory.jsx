@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { useToast } from "../../components/Toast";
 
-const API_URL = "http://localhost:3000/api";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
 const AdminInventory = () => {
   const { user, token } = useSelector((state) => state.auth);

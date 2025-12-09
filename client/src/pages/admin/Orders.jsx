@@ -25,6 +25,7 @@ import { Link } from "react-router-dom";
 
 // Auto-refresh interval in milliseconds (5 seconds)
 const SYNC_INTERVAL = 5000;
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
 const AdminOrders = () => {
   const dispatch = useDispatch();
@@ -72,7 +73,7 @@ const AdminOrders = () => {
     try {
       const statusQuery = statusFilter ? `&status=${statusFilter}` : "";
       const response = await axios.get(
-        `http://localhost:3000/api/orders/admin/all?page=${
+        `${API_URL}/orders/admin/all?page=${
           adminPagination?.page || 1
         }&limit=20${statusQuery}`,
         {
@@ -388,7 +389,7 @@ const AdminOrders = () => {
 
   const handleReturnStatusUpdate = async (orderId, status) => {
     try {
-      const endpoint = `http://localhost:3000/api/orders/admin/${orderId}/return-status`;
+      const endpoint = `${API_URL}/orders/admin/${orderId}/return-status`;
       const method = "PUT";
       let body = { status };
 

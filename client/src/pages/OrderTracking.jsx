@@ -28,6 +28,7 @@ import { useToast } from "../components/Toast";
 
 // Sync interval in milliseconds (3 seconds)
 const SYNC_INTERVAL = 3000;
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
 const OrderTracking = () => {
   const { orderId } = useParams();
@@ -261,17 +262,14 @@ const OrderTracking = () => {
     setIsReturning(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(
-        `http://localhost:3000/api/orders/${orderId}/return`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ reason: returnReason }),
-        }
-      );
+      const response = await fetch(`${API_URL}/orders/${orderId}/return`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ reason: returnReason }),
+      });
 
       const result = await response.json();
 

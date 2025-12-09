@@ -1,7 +1,9 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 
-const API_URL = "http://localhost:3000/api/users";
+const API_URL = `${
+  import.meta.env.VITE_API_URL || "http://localhost:3000/api"
+}/users`;
 
 // Get user from localStorage
 const user = JSON.parse(localStorage.getItem("user"));

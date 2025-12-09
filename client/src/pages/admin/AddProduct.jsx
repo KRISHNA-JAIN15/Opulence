@@ -110,13 +110,18 @@ const AddProduct = () => {
       }
 
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:3000/api/products", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
+      const response = await fetch(
+        `${
+          import.meta.env.VITE_API_URL || "http://localhost:3000/api"
+        }/products`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        }
+      );
 
       const result = await response.json();
 

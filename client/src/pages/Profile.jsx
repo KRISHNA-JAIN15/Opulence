@@ -435,7 +435,7 @@ const Profile = () => {
                   { id: "addresses", label: "Addresses", icon: MapPin },
                   { id: "wallet", label: "Wallet", icon: Wallet },
                   { id: "orders", label: "Order History", icon: Package },
-                  { id: "preferences", label: "Preferences", icon: Settings },
+                  // { id: "preferences", label: "Preferences", icon: Settings },
                 ].map(({ id, label, icon: Icon }) => (
                   <li key={id}>
                     <button

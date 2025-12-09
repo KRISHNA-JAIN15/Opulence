@@ -1,4 +1,5 @@
 const Product = require("../models/product");
+const Review = require("../models/review");
 const {
   uploadToCloudinary,
   deleteFromCloudinary,
@@ -60,14 +61,52 @@ const getAllProducts = async (req, res) => {
       .sort(sort)
       .skip(skip)
       .limit(Number(limit))
-      .select("-__v");
+      .select("-__v")
+      .lean();
+
+    // Get ratings for all products
+    const productIds = products.map((p) => p._id);
+    const ratingsAggregation = await Review.aggregate([
+      {
+        $match: {
+          product: { $in: productIds },
+          isActive: true,
+        },
+      },
+      {
+        $group: {
+          _id: "$product",
+          avgRating: { $avg: "$rating" },
+          reviewCount: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // Create a map for quick lookup
+    const ratingsMap = {};
+    ratingsAggregation.forEach((r) => {
+      ratingsMap[r._id.toString()] = {
+        rating: Math.round(r.avgRating * 10) / 10, // Round to 1 decimal
+        reviewCount: r.reviewCount,
+      };
+    });
+
+    // Add ratings to products
+    const productsWithRatings = products.map((product) => {
+      const ratingData = ratingsMap[product._id.toString()];
+      return {
+        ...product,
+        rating: ratingData?.rating || 0,
+        reviewCount: ratingData?.reviewCount || 0,
+      };
+    });
 
     const total = await Product.countDocuments(filter);
     console.log(`Found ${products.length} products, total: ${total}`);
 
     res.status(200).json({
       success: true,
-      data: products,
+      data: productsWithRatings,
       pagination: {
         total,
         page: Number(page),

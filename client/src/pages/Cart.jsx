@@ -383,7 +383,7 @@ const Cart = () => {
             </div>
 
             {/* Promo Code */}
-            <div className="mt-6 bg-white rounded-lg shadow-sm border border-gray-200">
+            {/* <div className="mt-6 bg-white rounded-lg shadow-sm border border-gray-200">
               <div className="px-6 py-4">
                 <h3 className="text-sm font-medium text-gray-900 mb-3">
                   Promo Code
@@ -399,7 +399,7 @@ const Cart = () => {
                   </button>
                 </div>
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

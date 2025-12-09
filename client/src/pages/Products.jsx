@@ -526,8 +526,9 @@ const ProductCard = ({
               <div className="flex items-center gap-1 mt-1">
                 <Star size={14} className="text-yellow-400 fill-current" />
                 <span className="text-sm text-gray-600">
-                  {product.rating || "4.5"} (
-                  {product.reviewCount || Math.floor(Math.random() * 100)})
+                  {product.reviewCount > 0
+                    ? `${product.rating} (${product.reviewCount})`
+                    : "No reviews"}
                 </span>
               </div>
             </div>
@@ -637,8 +638,9 @@ const ProductCard = ({
           <div className="flex items-center gap-1">
             <Star size={14} className="text-yellow-400 fill-current" />
             <span className="text-sm text-gray-600">
-              {product.rating || "4.5"} (
-              {product.reviewCount || Math.floor(Math.random() * 100)})
+              {product.reviewCount > 0
+                ? `${product.rating} (${product.reviewCount})`
+                : "No reviews"}
             </span>
           </div>
         </div>

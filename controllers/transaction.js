@@ -303,27 +303,28 @@ const recordSaleFromOrder = async (order) => {
   try {
     const transactions = [];
 
-    // Calculate total subtotal to determine tax ratio per item
+    // Calculate total subtotal to determine tax and discount ratio per item
     const subtotal = order.items.reduce(
       (sum, item) => sum + item.price * item.quantity,
       0
     );
     const totalTax = order.pricing?.tax || 0;
+    const totalDiscount = order.pricing?.discount || 0; // Coupon discount
 
     for (const item of order.items) {
       const product = await Product.findById(item.product);
       const itemSubtotal = item.price * item.quantity;
 
-      // Calculate proportional tax for this item
-      const itemTaxRatio = subtotal > 0 ? itemSubtotal / subtotal : 0;
-      const itemTax = totalTax * itemTaxRatio;
+      // Calculate proportional tax and discount for this item
+      const itemRatio = subtotal > 0 ? itemSubtotal / subtotal : 0;
+      const itemTax = totalTax * itemRatio;
+      const itemDiscount = totalDiscount * itemRatio; // Proportional coupon discount
 
-      // Total amount = subtotal + proportional tax (this is what user actually paid for this item)
-      const totalAmount = itemSubtotal + itemTax;
+      // Total amount = subtotal + proportional tax - proportional discount (actual money received)
+      const totalAmount = itemSubtotal + itemTax - itemDiscount;
 
       const costPrice = (product?.costPrice || 0) * item.quantity;
-      const discount = item.discount || 0;
-      const profit = totalAmount - costPrice - discount;
+      const profit = totalAmount - costPrice;
       const margin = totalAmount > 0 ? (profit / totalAmount) * 100 : 0;
 
       const txn = await Transaction.create({
@@ -331,16 +332,18 @@ const recordSaleFromOrder = async (order) => {
         order: order._id,
         product: item.product,
         user: order.user,
-        amount: totalAmount, // Full amount including tax
+        amount: totalAmount, // Actual amount received after discount
         costAmount: costPrice,
         profit,
         margin,
         description: `Sale: ${item.name} x ${
           item.quantity
-        } (incl. tax ₹${itemTax.toFixed(2)})`,
+        } (incl. tax ₹${itemTax.toFixed(2)}${
+          itemDiscount > 0 ? `, discount -₹${itemDiscount.toFixed(2)}` : ""
+        })`,
         quantity: item.quantity,
         sellingPrice: item.price,
-        discount,
+        discount: itemDiscount,
         flowType: "inflow",
         status: "completed",
         metadata: {
@@ -348,27 +351,10 @@ const recordSaleFromOrder = async (order) => {
           productName: item.name,
           subtotal: itemSubtotal,
           tax: itemTax,
+          discount: itemDiscount,
         },
       });
       transactions.push(txn);
-    }
-
-    // Record coupon discount if any
-    if (order.pricing?.couponDiscount > 0) {
-      await Transaction.create({
-        type: "coupon_discount",
-        order: order._id,
-        user: order.user,
-        amount: order.pricing.couponDiscount,
-        description: `Coupon discount: ${order.couponCode || "Applied"}`,
-        flowType: "outflow",
-        couponCode: order.couponCode,
-        couponDiscount: order.pricing.couponDiscount,
-        status: "completed",
-        metadata: {
-          orderNumber: order.orderNumber,
-        },
-      });
     }
 
     return transactions;

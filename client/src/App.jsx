@@ -33,6 +33,7 @@ import AdminUsers from "./pages/admin/Users";
 import AdminInventory from "./pages/admin/Inventory";
 import AdminOrders from "./pages/admin/Orders";
 import AdminTransactions from "./pages/admin/Transactions";
+import AdminCoupons from "./pages/admin/Coupons";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ScrollToTop from "./components/ScrollToTop";
 import PageLoader from "./components/PageLoader";
@@ -143,6 +144,14 @@ function AppContent() {
             element={
               <AdminLayout>
                 <AdminTransactions />
+              </AdminLayout>
+            }
+          />
+          <Route
+            path="/admin/coupons"
+            element={
+              <AdminLayout>
+                <AdminCoupons />
               </AdminLayout>
             }
           />

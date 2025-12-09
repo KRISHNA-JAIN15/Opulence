@@ -75,6 +75,8 @@ const orderSchema = new Schema(
       tax: { type: Number, required: true },
       shipping: { type: Number, default: 0 },
       discount: { type: Number, default: 0 },
+      couponCode: { type: String, default: null },
+      walletUsed: { type: Number, default: 0 },
       total: { type: Number, required: true },
     },
     orderStatus: {

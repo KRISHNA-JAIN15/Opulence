@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
+import { logout } from "./authSlice";
 
 const API_URL = "http://localhost:3000/api";
 
@@ -270,17 +271,24 @@ const cartSlice = createSlice({
 
   // Handle async thunk for syncing cart prices
   extraReducers: (builder) => {
-    builder.addCase(syncCartPrices.fulfilled, (state, action) => {
-      state.cartItems = action.payload;
+    builder
+      .addCase(syncCartPrices.fulfilled, (state, action) => {
+        state.cartItems = action.payload;
 
-      // Calculate new totals
-      const totals = calculateCartTotals(state.cartItems);
-      state.cartTotal = totals.cartTotal;
-      state.cartQuantity = totals.cartQuantity;
+        // Calculate new totals
+        const totals = calculateCartTotals(state.cartItems);
+        state.cartTotal = totals.cartTotal;
+        state.cartQuantity = totals.cartQuantity;
 
-      // Save to localStorage
-      saveCartToLocalStorage(state.cartItems);
-    });
+        // Save to localStorage
+        saveCartToLocalStorage(state.cartItems);
+      })
+      // Clear cart when user logs out
+      .addCase(logout.fulfilled, (state) => {
+        state.cartItems = [];
+        state.cartTotal = 0;
+        state.cartQuantity = 0;
+      });
   },
 });
 

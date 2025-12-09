@@ -255,7 +255,7 @@ const AdminDashboard = () => {
                               : "bg-red-100 text-red-800"
                           }`}
                         >
-                          {product.inStock} units
+                          {product.inStock}
                         </span>
                       </td>
                       <td className="py-3 px-4">

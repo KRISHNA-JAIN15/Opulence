@@ -1,6 +1,7 @@
 const Order = require("../models/order");
 const Product = require("../models/product");
 const User = require("../models/user");
+const Coupon = require("../models/coupon");
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
 
@@ -201,7 +202,8 @@ exports.verifyPaymentAndCreateOrder = async (req, res) => {
         subtotal: orderData.subtotal,
         tax: orderData.tax,
         shipping: orderData.shipping,
-        discount: orderData.discount || 0,
+        discount: orderData.couponDiscount || 0,
+        couponCode: orderData.couponCode || null,
         walletUsed: walletAmountUsed,
         total: orderData.total,
       },
@@ -210,6 +212,22 @@ exports.verifyPaymentAndCreateOrder = async (req, res) => {
     });
 
     await order.save();
+
+    // Mark coupon as used if applied
+    if (orderData.couponCode) {
+      try {
+        const coupon = await Coupon.findOne({ code: orderData.couponCode });
+        if (coupon) {
+          await coupon.markAsUsed(
+            req.user._id,
+            orderData.total,
+            orderData.couponDiscount
+          );
+        }
+      } catch (couponError) {
+        console.error("Failed to mark coupon as used:", couponError);
+      }
+    }
 
     // Update product stock
     for (const item of orderData.items) {
@@ -380,7 +398,8 @@ exports.createWalletOrder = async (req, res) => {
         subtotal: orderData.subtotal,
         tax: orderData.tax,
         shipping: orderData.shipping,
-        discount: orderData.discount || 0,
+        discount: orderData.couponDiscount || 0,
+        couponCode: orderData.couponCode || null,
         walletUsed: walletAmountUsed,
         total: totalAmount,
       },
@@ -389,6 +408,22 @@ exports.createWalletOrder = async (req, res) => {
     });
 
     await order.save();
+
+    // Mark coupon as used if applied
+    if (orderData.couponCode) {
+      try {
+        const coupon = await Coupon.findOne({ code: orderData.couponCode });
+        if (coupon) {
+          await coupon.markAsUsed(
+            req.user._id,
+            totalAmount,
+            orderData.couponDiscount
+          );
+        }
+      } catch (couponError) {
+        console.error("Failed to mark coupon as used:", couponError);
+      }
+    }
 
     // Update product stock
     for (const item of orderData.items) {

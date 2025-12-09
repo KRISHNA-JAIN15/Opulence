@@ -109,9 +109,8 @@ const AdminHeader = () => {
                     ></div>
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-20 overflow-hidden">
                       <Link
-                        to="/admin/users"
+                        to="/admin/coupons"
                         onClick={() => setShowSettingsDropdown(false)}
-                        state={{ openCouponModal: true }}
                         className="w-full flex items-center gap-3 px-4 py-3 hover:bg-blue-50 transition-colors text-left border-b border-gray-100"
                       >
                         <Tag size={18} className="text-purple-600" />

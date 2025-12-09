@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import {
   CreditCard,
   Shield,
@@ -9,6 +10,9 @@ import {
   MapPin,
   Package,
   Wallet,
+  Tag,
+  X,
+  Loader2,
 } from "lucide-react";
 import { clearCart, syncCartPrices } from "../store/cartSlice";
 import { getProfile } from "../store/profileSlice";
@@ -21,6 +25,8 @@ import {
   resetOrderState,
 } from "../store/orderSlice";
 import { useToast } from "../components/Toast";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
 const Checkout = () => {
   const dispatch = useDispatch();
@@ -43,6 +49,12 @@ const Checkout = () => {
   const [selectedAddressId, setSelectedAddressId] = useState(null);
   const [useNewAddress, setUseNewAddress] = useState(false);
   const [useWallet, setUseWallet] = useState(false);
+
+  // Coupon state
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState("");
 
   const [formData, setFormData] = useState({
     // Shipping Information
@@ -160,16 +172,61 @@ const Checkout = () => {
   const subtotal = cartTotal;
   const tax = subtotal * 0.08;
   const shipping = 0; // Free shipping
-  const totalBeforeWallet = subtotal + tax + shipping;
+
+  // Calculate coupon discount
+  const couponDiscount = appliedCoupon ? appliedCoupon.calculatedDiscount : 0;
+  const totalBeforeCouponAndWallet = subtotal + tax + shipping;
+  const totalAfterCoupon = totalBeforeCouponAndWallet - couponDiscount;
 
   // Calculate wallet amount to use
   const walletBalance = balance || 0;
   const walletAmountToUse = useWallet
-    ? Math.min(walletBalance, totalBeforeWallet)
+    ? Math.min(walletBalance, totalAfterCoupon)
     : 0;
-  const total = totalBeforeWallet - walletAmountToUse;
+  const total = totalAfterCoupon - walletAmountToUse;
   const isFullWalletPayment =
-    useWallet && walletAmountToUse >= totalBeforeWallet;
+    useWallet && walletAmountToUse >= totalAfterCoupon;
+
+  // Apply coupon
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+      setCouponError("Please enter a coupon code");
+      return;
+    }
+
+    setCouponLoading(true);
+    setCouponError("");
+
+    try {
+      const response = await axios.post(
+        `${API_URL}/coupons/validate`,
+        { code: couponCode, orderAmount: subtotal },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.success) {
+        setAppliedCoupon(response.data.coupon);
+        toast.success(
+          `Coupon applied! You save ₹${response.data.coupon.calculatedDiscount.toFixed(
+            2
+          )}`
+        );
+      }
+    } catch (error) {
+      setCouponError(error.response?.data?.message || "Invalid coupon code");
+      toast.error(error.response?.data?.message || "Invalid coupon code");
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  // Remove coupon
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode("");
+    setCouponError("");
+    toast.success("Coupon removed");
+  };
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -302,7 +359,9 @@ const Checkout = () => {
         subtotal,
         tax,
         shipping,
-        total: totalBeforeWallet,
+        couponCode: appliedCoupon?.code || null,
+        couponDiscount: couponDiscount,
+        total: totalAfterCoupon,
         walletAmountUsed: walletAmountToUse,
         orderNotes: formData.orderNotes,
       };
@@ -326,7 +385,7 @@ const Checkout = () => {
       }
 
       // Create Razorpay order for the remaining amount after wallet
-      const amountToPay = total; // This is already totalBeforeWallet - walletAmountToUse
+      const amountToPay = total; // This is already totalAfterCoupon - walletAmountToUse
       const orderResult = await dispatch(
         createRazorpayOrder(amountToPay)
       ).unwrap();
@@ -889,6 +948,69 @@ const Checkout = () => {
                   })}
                 </div>
 
+                {/* Coupon Code Section */}
+                <div className="mb-6 border-t border-gray-200 pt-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Tag size={18} className="text-gray-600" />
+                    <span className="text-sm font-medium text-gray-700">
+                      Apply Coupon
+                    </span>
+                  </div>
+
+                  {appliedCoupon ? (
+                    <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-3">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle size={18} className="text-green-600" />
+                        <div>
+                          <span className="font-mono font-bold text-green-700">
+                            {appliedCoupon.code}
+                          </span>
+                          <p className="text-xs text-green-600">
+                            {appliedCoupon.discountType === "percentage"
+                              ? `${appliedCoupon.discountAmount}% off`
+                              : `₹${appliedCoupon.discountAmount} off`}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleRemoveCoupon}
+                        className="p-1 hover:bg-green-100 rounded-full text-green-600"
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={couponCode}
+                        onChange={(e) => {
+                          setCouponCode(e.target.value.toUpperCase());
+                          setCouponError("");
+                        }}
+                        placeholder="Enter coupon code"
+                        className={`flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-black uppercase ${
+                          couponError ? "border-red-300" : "border-gray-200"
+                        }`}
+                      />
+                      <button
+                        onClick={handleApplyCoupon}
+                        disabled={couponLoading || !couponCode.trim()}
+                        className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        {couponLoading ? (
+                          <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                          "Apply"
+                        )}
+                      </button>
+                    </div>
+                  )}
+                  {couponError && (
+                    <p className="text-xs text-red-500 mt-1">{couponError}</p>
+                  )}
+                </div>
+
                 {/* Totals */}
                 <div className="space-y-3 border-t border-gray-200 pt-4">
                   <div className="flex justify-between text-sm">
@@ -905,6 +1027,19 @@ const Checkout = () => {
                     <span className="text-gray-600">Tax (8%)</span>
                     <span className="font-medium">₹{tax.toFixed(2)}</span>
                   </div>
+
+                  {/* Coupon Discount */}
+                  {appliedCoupon && couponDiscount > 0 && (
+                    <div className="flex justify-between text-sm text-green-600">
+                      <span className="flex items-center gap-1">
+                        <Tag size={14} />
+                        Coupon ({appliedCoupon.code})
+                      </span>
+                      <span className="font-medium">
+                        -₹{couponDiscount.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
 
                   {/* Wallet Balance Section */}
                   {walletBalance > 0 && (

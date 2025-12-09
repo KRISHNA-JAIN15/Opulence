@@ -127,6 +127,7 @@ export const getBalance = createAsyncThunk(
 export const logout = createAsyncThunk("auth/logout", async () => {
   localStorage.removeItem("token");
   localStorage.removeItem("user");
+  localStorage.removeItem("cart"); // Clear cart on logout
 });
 
 export const authSlice = createSlice({

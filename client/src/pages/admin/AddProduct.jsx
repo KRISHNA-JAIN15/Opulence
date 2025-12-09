@@ -3,11 +3,13 @@ import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Upload, X } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useToast } from "../../components/Toast";
 
 const AddProduct = () => {
   const [images, setImages] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
+  const toast = useToast();
 
   const {
     register,
@@ -54,7 +56,7 @@ const AddProduct = () => {
           };
           reader.readAsDataURL(file);
         } else {
-          alert("Please select valid image files under 5MB");
+          toast.error("Please select valid image files under 5MB");
         }
       });
       setValue("images", [...images, ...files]);
@@ -72,7 +74,7 @@ const AddProduct = () => {
   const onSubmit = async (data) => {
     // Check if images are uploaded
     if (images.length === 0) {
-      alert("Please upload at least one product image");
+      toast.error("Please upload at least one product image");
       return;
     }
 
@@ -119,14 +121,14 @@ const AddProduct = () => {
       const result = await response.json();
 
       if (result.success) {
-        alert("Product added successfully!");
+        toast.success("Product added successfully!");
         navigate("/admin");
       } else {
-        alert(result.message || "Failed to add product");
+        toast.error(result.message || "Failed to add product");
       }
     } catch (error) {
       console.error("Error adding product:", error);
-      alert("Failed to add product");
+      toast.error("Failed to add product");
     } finally {
       setIsSubmitting(false);
     }

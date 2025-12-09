@@ -23,11 +23,13 @@ import {
   Check,
   X,
 } from "lucide-react";
+import { useToast } from "../../components/Toast";
 
 const API_URL = "http://localhost:3000/api";
 
 const AdminInventory = () => {
   const { user, token } = useSelector((state) => state.auth);
+  const toast = useToast();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [salesData, setSalesData] = useState({});
@@ -200,12 +202,13 @@ const AdminInventory = () => {
               : p
           )
         );
+        toast.success("Stock updated successfully!");
         setEditingProduct(null);
         setStockAmount("");
         setStockOperation("add");
       }
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to update stock");
+      toast.error(err.response?.data?.message || "Failed to update stock");
     } finally {
       setIsUpdating(false);
     }

@@ -8,6 +8,7 @@ import {
   getWishlist,
 } from "../store/wishlistSlice";
 import { addToCart } from "../store/cartSlice";
+import { useToast } from "../components/Toast";
 import {
   Search,
   Grid,
@@ -30,6 +31,7 @@ const Products = () => {
   const [showFilters, setShowFilters] = useState(false);
 
   const dispatch = useDispatch();
+  const toast = useToast();
   const { products, categories, isLoading, pagination, isError, message } =
     useSelector((state) => state.products);
   const { wishlistItems } = useSelector((state) => state.wishlist);
@@ -396,6 +398,7 @@ const Products = () => {
                 wishlistItems={wishlistItems}
                 token={token}
                 dispatch={dispatch}
+                toast={toast}
               />
             ))}
           </div>
@@ -413,20 +416,23 @@ const ProductCard = ({
   wishlistItems,
   token,
   dispatch,
+  toast,
 }) => {
   const isInWishlist = wishlistItems?.some((item) => item._id === product._id);
 
   const handleWishlistToggle = (e) => {
     e.preventDefault();
     if (!token) {
-      alert("Please login to add items to wishlist");
+      toast.error("Please login to add items to wishlist");
       return;
     }
 
     if (isInWishlist) {
       dispatch(removeFromWishlist(product._id));
+      toast.success("Removed from wishlist");
     } else {
       dispatch(addToWishlist(product._id));
+      toast.success("Added to wishlist");
     }
   };
 
@@ -434,18 +440,7 @@ const ProductCard = ({
     e.preventDefault();
     e.stopPropagation();
     dispatch(addToCart({ product, quantity: 1 }));
-
-    // Simple success feedback
-    const button = e.target.closest("button");
-    const originalText = button.innerHTML;
-    button.innerHTML =
-      '<span class="flex items-center justify-center gap-2">Added!</span>';
-    button.style.backgroundColor = "#22c55e";
-
-    setTimeout(() => {
-      button.innerHTML = originalText;
-      button.style.backgroundColor = "";
-    }, 1500);
+    toast.success(`${product.name} added to cart`);
   };
 
   if (viewMode === "list") {

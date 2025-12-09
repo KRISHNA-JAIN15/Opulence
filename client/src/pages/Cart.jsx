@@ -17,10 +17,12 @@ import {
   CreditCard,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
+import { useToast } from "../components/Toast";
 
 const Cart = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const toast = useToast();
   const { cartItems, cartTotal, cartQuantity } = useSelector(
     (state) => state.cart
   );
@@ -71,11 +73,13 @@ const Cart = () => {
 
   const handleRemoveItem = (productId) => {
     dispatch(removeFromCart(productId));
+    toast.success("Item removed from cart");
   };
 
   const handleClearCart = () => {
     if (window.confirm("Are you sure you want to clear your cart?")) {
       dispatch(clearCart());
+      toast.success("Cart cleared");
     }
   };
 

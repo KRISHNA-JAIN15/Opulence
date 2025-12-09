@@ -20,10 +20,12 @@ import {
   createWalletOrder,
   resetOrderState,
 } from "../store/orderSlice";
+import { useToast } from "../components/Toast";
 
 const Checkout = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const toast = useToast();
   const { cartItems, cartTotal, cartQuantity } = useSelector(
     (state) => state.cart
   );
@@ -112,19 +114,21 @@ const Checkout = () => {
     if (isSuccess && currentOrder) {
       setOrderComplete(true);
       setCompletedOrder(currentOrder);
+      toast.success("Order placed successfully!");
       dispatch(clearCart());
       dispatch(resetOrderState());
     }
-  }, [isSuccess, currentOrder, dispatch]);
+  }, [isSuccess, currentOrder, dispatch, toast]);
 
   // Handle order error
   useEffect(() => {
     if (isError && message) {
+      toast.error(message || "Order failed. Please try again.");
       setErrors({ submit: message });
       setIsProcessing(false);
       dispatch(resetOrderState());
     }
-  }, [isError, message, dispatch]);
+  }, [isError, message, dispatch, toast]);
 
   // Redirect to login if not authenticated
   useEffect(() => {

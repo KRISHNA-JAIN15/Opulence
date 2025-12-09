@@ -20,13 +20,16 @@ import {
   updateAddress,
   deleteAddress,
   updatePreferences,
+  reset as resetProfileState,
 } from "../store/profileSlice";
 import { getUserOrders } from "../store/orderSlice";
 import { getBalance } from "../store/authSlice";
+import { useToast } from "../components/Toast";
 
 const Profile = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const toast = useToast();
   const { profile, isLoading, isError, isSuccess, message } = useSelector(
     (state) => state.profile
   );
@@ -41,6 +44,26 @@ const Profile = () => {
   const [editingAddress, setEditingAddress] = useState(null);
   const [showAddAddress, setShowAddAddress] = useState(false);
   const [formData, setFormData] = useState({});
+
+  // Load profile on component mount
+  useEffect(() => {
+    if (user) {
+      dispatch(getProfile());
+      dispatch(getBalance());
+    }
+  }, [dispatch, user]);
+
+  // Show toast on success/error
+  useEffect(() => {
+    if (isSuccess && message) {
+      toast.success(message);
+      dispatch(resetProfileState());
+    }
+    if (isError && message) {
+      toast.error(message);
+      dispatch(resetProfileState());
+    }
+  }, [isSuccess, isError, message, toast, dispatch]);
 
   // Load profile on component mount
   useEffect(() => {

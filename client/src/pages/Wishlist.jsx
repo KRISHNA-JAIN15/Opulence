@@ -7,11 +7,13 @@ import {
   clearWishlist,
 } from "../store/wishlistSlice";
 import { addToCart } from "../store/cartSlice";
+import { useToast } from "../components/Toast";
 import { Heart, ShoppingCart, Trash2, XCircle } from "lucide-react";
 
 const Wishlist = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const toast = useToast();
   const { wishlistItems, isLoading } = useSelector((state) => state.wishlist);
   const { token } = useSelector((state) => state.auth);
 
@@ -25,6 +27,7 @@ const Wishlist = () => {
 
   const handleRemoveFromWishlist = (productId) => {
     dispatch(removeFromWishlist(productId));
+    toast.success("Removed from wishlist");
   };
 
   const handleClearWishlist = () => {
@@ -32,6 +35,7 @@ const Wishlist = () => {
       window.confirm("Are you sure you want to clear your entire wishlist?")
     ) {
       dispatch(clearWishlist());
+      toast.success("Wishlist cleared");
     }
   };
 
@@ -46,6 +50,7 @@ const Wishlist = () => {
         discount: product.discount,
       })
     );
+    toast.success(`${product.name} added to cart`);
   };
 
   const calculateDiscountedPrice = (price, discount) => {

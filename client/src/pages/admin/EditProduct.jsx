@@ -9,12 +9,14 @@ import {
   updateProduct,
   reset as resetProductState,
 } from "../../store/productSlice";
+import { useToast } from "../../components/Toast";
 
 const EditProduct = () => {
   const [images, setImages] = useState([]);
   const navigate = useNavigate();
   const { id } = useParams();
   const dispatch = useDispatch();
+  const toast = useToast();
 
   const { currentProduct, isLoading, isError, isSuccess, message } =
     useSelector((state) => state.products);
@@ -112,14 +114,14 @@ const EditProduct = () => {
   // Handle success/error states
   useEffect(() => {
     if (isError) {
-      alert(message || "Failed to load product");
+      toast.error(message || "Failed to load product");
       navigate("/admin");
     }
     if (isSuccess && message && !currentProduct) {
-      alert(message);
+      toast.success(message);
       navigate("/admin");
     }
-  }, [isError, isSuccess, message, currentProduct, navigate]);
+  }, [isError, isSuccess, message, currentProduct, navigate, toast]);
 
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
@@ -140,7 +142,7 @@ const EditProduct = () => {
           };
           reader.readAsDataURL(file);
         } else {
-          alert("Please select valid image files under 5MB");
+          toast.error("Please select valid image files under 5MB");
         }
       });
       setValue("images", [...images, ...files]);
@@ -189,11 +191,11 @@ const EditProduct = () => {
     dispatch(updateProduct({ id, productData: formData }))
       .unwrap()
       .then(() => {
-        alert("Product updated successfully!");
+        toast.success("Product updated successfully!");
         navigate("/admin");
       })
       .catch((error) => {
-        alert(error || "Failed to update product");
+        toast.error(error || "Failed to update product");
       });
   };
 

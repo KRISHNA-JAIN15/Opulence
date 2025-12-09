@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import { signup, reset, setVerificationEmail } from "../store/authSlice";
+import { useToast } from "../components/Toast";
 import { Mail, Lock, User, Eye, EyeOff, Loader } from "lucide-react";
 
 const Signup = () => {
@@ -18,25 +19,28 @@ const Signup = () => {
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const toast = useToast();
   const { isLoading, isError, isSuccess, message } = useSelector(
     (state) => state.auth
   );
 
   useEffect(() => {
     if (isError) {
+      toast.error(message || "Signup failed. Please try again.");
       setTimeout(() => {
         dispatch(reset());
       }, 3000);
     }
 
     if (isSuccess) {
+      toast.success("Account created! Please verify your email.");
       navigate("/verify-email");
     }
 
     return () => {
       dispatch(reset());
     };
-  }, [isError, isSuccess, navigate, dispatch]);
+  }, [isError, isSuccess, message, navigate, dispatch, toast]);
 
   const onChange = (e) => {
     setFormData((prevState) => ({
@@ -49,12 +53,12 @@ const Signup = () => {
     e.preventDefault();
 
     if (password !== confirmPassword) {
-      alert("Passwords do not match");
+      toast.error("Passwords do not match");
       return;
     }
 
     if (password.length < 6) {
-      alert("Password must be at least 6 characters");
+      toast.error("Password must be at least 6 characters");
       return;
     }
 

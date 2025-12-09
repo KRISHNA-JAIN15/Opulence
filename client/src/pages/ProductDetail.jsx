@@ -28,12 +28,14 @@ import {
   removeFromWishlist,
   getWishlist,
 } from "../store/wishlistSlice";
+import { useToast } from "../components/Toast";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
 const ProductDetail = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
+  const toast = useToast();
   const { currentProduct, relatedProducts, isLoading, isError } = useSelector(
     (state) => state.products
   );
@@ -125,14 +127,16 @@ const ProductDetail = () => {
 
   const handleWishlistToggle = () => {
     if (!token) {
-      alert("Please login to add items to wishlist");
+      toast.error("Please login to add items to wishlist");
       return;
     }
 
     if (isInWishlist) {
       dispatch(removeFromWishlist(id));
+      toast.success("Removed from wishlist");
     } else {
       dispatch(addToWishlist(id));
+      toast.success("Added to wishlist");
     }
   };
 
@@ -147,12 +151,7 @@ const ProductDetail = () => {
   const handleAddToCart = () => {
     if (currentProduct) {
       dispatch(addToCart({ product: currentProduct, quantity }));
-
-      // Show success message
-      console.log(`Added ${quantity} of ${currentProduct.name} to cart`);
-
-      // You could add a toast notification here
-      // For now, just reset quantity to 1 to indicate success
+      toast.success(`Added ${quantity} ${currentProduct.name} to cart`);
       setQuantity(1);
     }
   };
@@ -160,11 +159,11 @@ const ProductDetail = () => {
   const handleReviewSubmit = async (e) => {
     e.preventDefault();
     if (!token) {
-      setReviewError("Please login to submit a review");
+      toast.error("Please login to submit a review");
       return;
     }
     if (!canReview) {
-      setReviewError(reviewEligibilityReason);
+      toast.error(reviewEligibilityReason);
       return;
     }
 
@@ -186,6 +185,7 @@ const ProductDetail = () => {
       );
 
       if (response.data.success) {
+        toast.success("Review submitted successfully!");
         setNewReview({ rating: 5, title: "", comment: "" });
         // Refresh reviews and eligibility
         fetchReviews();
@@ -193,9 +193,7 @@ const ProductDetail = () => {
       }
     } catch (error) {
       console.error("Error submitting review:", error);
-      setReviewError(
-        error.response?.data?.message || "Failed to submit review"
-      );
+      toast.error(error.response?.data?.message || "Failed to submit review");
     } finally {
       setSubmittingReview(false);
     }
@@ -203,7 +201,7 @@ const ProductDetail = () => {
 
   const handleMarkHelpful = async (reviewId) => {
     if (!token) {
-      alert("Please login to mark reviews as helpful");
+      toast.error("Please login to mark reviews as helpful");
       return;
     }
     try {
@@ -214,10 +212,12 @@ const ProductDetail = () => {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
+      toast.success("Marked as helpful");
       // Refresh reviews
       fetchReviews();
     } catch (error) {
       console.error("Error marking review as helpful:", error);
+      toast.error("Failed to mark as helpful");
     }
   };
 

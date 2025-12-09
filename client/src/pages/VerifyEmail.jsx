@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { verifyEmail, resendVerification, reset } from "../store/authSlice";
+import { useToast } from "../components/Toast";
 import { Mail, CheckCircle, Loader, RefreshCw } from "lucide-react";
 
 const VerifyEmail = () => {
@@ -10,6 +11,7 @@ const VerifyEmail = () => {
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const toast = useToast();
   const { verificationEmail, isLoading, isError, isSuccess, message } =
     useSelector((state) => state.auth);
 
@@ -18,7 +20,12 @@ const VerifyEmail = () => {
       navigate("/signup");
     }
 
+    if (isError) {
+      toast.error(message || "Verification failed. Please try again.");
+    }
+
     if (isSuccess && message.includes("verified")) {
+      toast.success("Email verified successfully! Redirecting to login...");
       setTimeout(() => {
         navigate("/login");
       }, 2000);
@@ -27,7 +34,15 @@ const VerifyEmail = () => {
     return () => {
       dispatch(reset());
     };
-  }, [verificationEmail, isSuccess, message, navigate, dispatch]);
+  }, [
+    verificationEmail,
+    isSuccess,
+    isError,
+    message,
+    navigate,
+    dispatch,
+    toast,
+  ]);
 
   const onSubmit = (e) => {
     e.preventDefault();
@@ -39,13 +54,14 @@ const VerifyEmail = () => {
         })
       );
     } else {
-      alert("Please enter a 6-digit verification code");
+      toast.error("Please enter a 6-digit verification code");
     }
   };
 
   const handleResend = async () => {
     setResendLoading(true);
     await dispatch(resendVerification(verificationEmail));
+    toast.success("Verification code resent! Check your email.");
     setResendLoading(false);
     setTimeout(() => {
       dispatch(reset());

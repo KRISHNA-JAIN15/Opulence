@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import { login, reset } from "../store/authSlice";
+import { useToast } from "../components/Toast";
 import { Mail, Lock, Eye, EyeOff, Loader } from "lucide-react";
 
 const Login = () => {
@@ -15,12 +16,16 @@ const Login = () => {
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const toast = useToast();
   const { user, isLoading, isError, isSuccess, message } = useSelector(
     (state) => state.auth
   );
 
   useEffect(() => {
     if (isError) {
+      // Show toast for error
+      toast.error(message || "Login failed. Please try again.");
+
       // Check if the error is about email verification
       if (message && message.includes("verify your email")) {
         // Redirect to verify email page after a short delay
@@ -36,13 +41,14 @@ const Login = () => {
     }
 
     if (isSuccess && user) {
+      toast.success("Login successful! Welcome back.");
       navigate("/");
     }
 
     return () => {
       dispatch(reset());
     };
-  }, [user, isError, isSuccess, message, navigate, dispatch]);
+  }, [user, isError, isSuccess, message, navigate, dispatch, toast]);
 
   const onChange = (e) => {
     setFormData((prevState) => ({

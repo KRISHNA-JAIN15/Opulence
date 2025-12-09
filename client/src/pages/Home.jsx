@@ -21,9 +21,11 @@ import {
   removeFromWishlist,
   getWishlist,
 } from "../store/wishlistSlice";
+import { useToast } from "../components/Toast";
 
 const Home = () => {
   const dispatch = useDispatch();
+  const toast = useToast();
   const { featuredProducts, discountedProducts, isLoading } = useSelector(
     (state) => state.products
   );
@@ -88,6 +90,7 @@ const Home = () => {
                 product={product}
                 wishlistItems={wishlistItems}
                 token={token}
+                toast={toast}
               />
             ))}
           </div>
@@ -145,6 +148,7 @@ const Home = () => {
                   product={product}
                   wishlistItems={wishlistItems}
                   token={token}
+                  toast={toast}
                 />
               ))}
             </div>
@@ -212,7 +216,7 @@ const Home = () => {
 };
 
 // Product Card Component
-const ProductCard = ({ product, wishlistItems, token }) => {
+const ProductCard = ({ product, wishlistItems, token, toast }) => {
   const dispatch = useDispatch();
 
   const isInWishlist = wishlistItems?.some((item) => item._id === product._id);
@@ -221,14 +225,16 @@ const ProductCard = ({ product, wishlistItems, token }) => {
     e.preventDefault();
     e.stopPropagation();
     if (!token) {
-      alert("Please login to add items to wishlist");
+      toast.error("Please login to add items to wishlist");
       return;
     }
 
     if (isInWishlist) {
       dispatch(removeFromWishlist(product._id));
+      toast.success("Removed from wishlist");
     } else {
       dispatch(addToWishlist(product._id));
+      toast.success("Added to wishlist");
     }
   };
 
@@ -243,17 +249,7 @@ const ProductCard = ({ product, wishlistItems, token }) => {
     e.preventDefault(); // Prevent navigation when clicking the button
     e.stopPropagation();
     dispatch(addToCart({ product, quantity: 1 }));
-
-    // Simple success feedback
-    const button = e.target.closest("button");
-    const originalText = button.innerHTML;
-    button.innerHTML = "<span>Added!</span>";
-    button.style.backgroundColor = "#22c55e";
-
-    setTimeout(() => {
-      button.innerHTML = originalText;
-      button.style.backgroundColor = "";
-    }, 1500);
+    toast.success(`${product.name} added to cart`);
   };
 
   return (
